@@ -7,7 +7,9 @@ const getDayName = (d) => ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'][d.getDay()
 const getMonthName = (d) => ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][d.getMonth()];
 const loadData = (k, def) => { try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : def; } catch { return def; }};
 const saveData = (k, v) => localStorage.setItem(k, JSON.stringify(v));
-const getDefaultDay = () => ({ habits: { breakfast: false, lunch: false, snack: false, dinner: false, plannedTreat: false }, sleep: 7, nap: 0, energy: 3, movement: { workout: false, walk: false, run: false }, ecarts: 0 });
+const getDefaultDay = () => ({ habits: { breakfast: false, lunch: false, snack: false, dinner: false, plannedTreat: false }, sleep: 7, nap: 0, energy: 3, movement: { workout: false, walk: false, run: false }, ecarts: { petit: 0, moyen: 0, gros: 0 } });
+const getEcartsCount = (e) => (e?.petit || 0) + (e?.moyen || 0) + (e?.gros || 0);
+const getEcartsKcal = (e) => ((e?.petit || 0) * 300) + ((e?.moyen || 0) * 600) + ((e?.gros || 0) * 1000);
 const calcScore = (d) => { 
   let s = 0; 
   if(d?.habits) Object.values(d.habits).forEach(c => { if(c) s += 20; }); 
@@ -16,7 +18,7 @@ const calcScore = (d) => {
   if(d?.movement?.workout) s += 5; 
   if(d?.movement?.walk) s += 5; 
   if(d?.movement?.run) s += 5;
-  s -= (d?.ecarts || 0) * 10;
+  s -= getEcartsCount(d?.ecarts) * 10;
   return Math.max(0, Math.min(s, 100)); 
 };
 
@@ -39,6 +41,12 @@ const MEALS = {
   plannedTreat: { title: 'Craquage', time: '21h-22h', items: ['Autorisé', 'Zéro culpabilité'], emoji: '🍫', colors: ['#ec4899', '#f43f5e'], points: 20, kcal: 300 },
 };
 
+const ECARTS = [
+  { id: 'petit', emoji: '🍪', label: 'Petit', desc: 'Snack, grignotage', kcal: 300, color: '#f59e0b' },
+  { id: 'moyen', emoji: '🍔', label: 'Moyen', desc: 'Fast food, resto', kcal: 600, color: '#f97316' },
+  { id: 'gros', emoji: '🍕', label: 'Gros', desc: 'Grosse bouffe', kcal: 1000, color: '#ef4444' },
+];
+
 const CircularProgress = ({ progress, size = 100 }) => {
   const sw = 10, r = (size - sw) / 2, c = r * 2 * Math.PI, o = c - (progress / 100) * c;
   return (
@@ -55,17 +63,67 @@ const CircularProgress = ({ progress, size = 100 }) => {
   );
 };
 
-const KcalProgress = ({ consumed, target }) => {
-  const pct = target > 0 ? Math.min((consumed / target) * 100, 100) : 0;
-  const remaining = target - consumed;
+const KcalProgress = ({ consumed, target, ecarts }) => {
+  const ecartsKcal = getEcartsKcal(ecarts);
+  const total = consumed + ecartsKcal;
+  const pct = target > 0 ? Math.min((total / target) * 100, 120) : 0;
+  const diff = target - total;
+  const isDeficit = diff > 0;
+  const isMaintenance = Math.abs(diff) <= 100;
+  
   return (
     <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 14, marginBottom: 12, border: '1px solid rgba(255,255,255,0.1)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)' }}>🔥 Calories</span>
-        <span style={{ fontSize: 16, fontWeight: 'bold', color: remaining >= 0 ? '#10b981' : '#ef4444' }}>{consumed} / {target}</span>
+      {/* Header avec indicateur */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)' }}>🔥 Calories</span>
+          <div style={{ 
+            padding: '4px 10px', 
+            borderRadius: 20, 
+            background: isMaintenance ? 'linear-gradient(135deg, #3b82f6, #6366f1)' : isDeficit ? 'linear-gradient(135deg, #10b981, #14b8a6)' : 'linear-gradient(135deg, #ef4444, #f97316)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4
+          }}>
+            <span style={{ fontSize: 12 }}>{isMaintenance ? '⚖️' : isDeficit ? '📉' : '📈'}</span>
+            <span style={{ fontSize: 11, fontWeight: 'bold', color: 'white' }}>
+              {isMaintenance ? 'Maintien' : isDeficit ? 'Déficit' : 'Surplus'}
+            </span>
+          </div>
+        </div>
+        <span style={{ fontSize: 16, fontWeight: 'bold', color: isDeficit ? '#10b981' : '#ef4444' }}>{total} / {target}</span>
       </div>
-      <div style={{ height: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 4 }}>
-        <div style={{ height: '100%', borderRadius: 4, background: remaining >= 0 ? 'linear-gradient(to right, #10b981, #14b8a6)' : 'linear-gradient(to right, #ef4444, #f97316)', width: `${pct}%`, transition: 'width 0.5s' }} />
+      
+      {/* Barre de progression */}
+      <div style={{ height: 10, background: 'rgba(255,255,255,0.1)', borderRadius: 5, overflow: 'hidden', position: 'relative' }}>
+        {/* Ligne du TDEE */}
+        <div style={{ position: 'absolute', left: `${Math.min(100, (target / (target * 1.2)) * 100)}%`, top: 0, bottom: 0, width: 2, background: 'rgba(255,255,255,0.5)', zIndex: 2 }} />
+        <div style={{ display: 'flex', height: '100%' }}>
+          <div style={{ height: '100%', background: 'linear-gradient(to right, #10b981, #14b8a6)', width: `${Math.min((consumed / (target * 1.2)) * 100, 100)}%`, transition: 'width 0.5s' }} />
+          {ecartsKcal > 0 && <div style={{ height: '100%', background: 'linear-gradient(to right, #f97316, #ef4444)', width: `${Math.min((ecartsKcal / (target * 1.2)) * 100, 100)}%`, transition: 'width 0.5s' }} />}
+        </div>
+      </div>
+      
+      {/* Détails */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
+          Plan: {consumed} {ecartsKcal > 0 && <span style={{ color: '#f97316' }}>+ {ecartsKcal} écarts</span>}
+        </span>
+        <span style={{ fontSize: 11, fontWeight: 'bold', color: isMaintenance ? '#3b82f6' : isDeficit ? '#10b981' : '#ef4444' }}>
+          {isMaintenance ? '≈ Équilibre' : isDeficit ? `−${diff} kcal` : `+${Math.abs(diff)} kcal`}
+        </span>
+      </div>
+      
+      {/* Message explicatif */}
+      <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 8, background: isMaintenance ? 'rgba(59,130,246,0.1)' : isDeficit ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)' }}>
+        <p style={{ fontSize: 11, color: isMaintenance ? '#60a5fa' : isDeficit ? '#34d399' : '#fca5a5', margin: 0, textAlign: 'center' }}>
+          {isMaintenance 
+            ? '⚖️ Tu maintiens ton poids actuel' 
+            : isDeficit 
+              ? `📉 Tu perds environ ${Math.round(diff / 7700 * 100) / 100} kg cette semaine à ce rythme`
+              : `📈 Tu prends environ ${Math.round(Math.abs(diff) / 7700 * 100) / 100} kg cette semaine à ce rythme`
+          }
+        </p>
       </div>
     </div>
   );
@@ -87,6 +145,51 @@ const HabitCard = ({ meal, checked, onChange }) => (
     </div>
   </button>
 );
+
+const EcartsSection = ({ ecarts, onChange }) => {
+  const updateEcart = (type, delta) => {
+    const current = ecarts?.[type] || 0;
+    const newVal = Math.max(0, current + delta);
+    onChange({ ...ecarts, [type]: newVal });
+  };
+  const totalKcal = getEcartsKcal(ecarts);
+  const totalCount = getEcartsCount(ecarts);
+  
+  return (
+    <div style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(249,115,22,0.1))', borderRadius: 16, padding: 14, marginBottom: 12, border: '1px solid rgba(239,68,68,0.2)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div>
+          <p style={{ fontSize: 14, fontWeight: 'bold', color: 'white', margin: 0 }}>🍔 Écarts</p>
+          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>-10 pts par écart</p>
+        </div>
+        {totalCount > 0 && (
+          <div style={{ background: 'rgba(239,68,68,0.3)', padding: '4px 10px', borderRadius: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 'bold', color: '#fca5a5' }}>{totalCount}x = +{totalKcal} kcal</span>
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+        {ECARTS.map(e => {
+          const count = ecarts?.[e.id] || 0;
+          return (
+            <div key={e.id} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 10 }}>
+              <div style={{ textAlign: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 24 }}>{e.emoji}</span>
+                <p style={{ fontSize: 12, fontWeight: 'bold', color: 'white', margin: '4px 0 0' }}>{e.label}</p>
+                <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', margin: '2px 0 0' }}>{e.kcal} kcal</p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <button onClick={() => updateEcart(e.id, -1)} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 16 }}>−</button>
+                <span style={{ fontSize: 18, fontWeight: 'bold', color: count > 0 ? e.color : 'white', minWidth: 24, textAlign: 'center' }}>{count}</span>
+                <button onClick={() => updateEcart(e.id, 1)} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', cursor: 'pointer', background: `${e.color}40`, color: 'white', fontSize: 16 }}>+</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 const EnergySelector = ({ value, onChange }) => {
   const levels = [{ v: 1, e: '😴', l: 'KO', c: ['#ef4444', '#f97316'] }, { v: 2, e: '😔', l: 'Dur', c: ['#f97316', '#f59e0b'] }, { v: 3, e: '😐', l: 'OK', c: ['#eab308', '#84cc16'] }, { v: 4, e: '🙂', l: 'Bien', c: ['#84cc16', '#22c55e'] }, { v: 5, e: '💪', l: 'Top', c: ['#22c55e', '#14b8a6'] }];
@@ -129,22 +232,6 @@ const CoachBubble = ({ message, onDismiss }) => {
     </div>
   );
 };
-
-const EcartsCounter = ({ value, onChange }) => (
-  <div style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(249,115,22,0.1))', borderRadius: 16, padding: 14, marginBottom: 12, border: '1px solid rgba(239,68,68,0.2)' }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <div>
-        <p style={{ fontSize: 14, fontWeight: 'bold', color: 'white', margin: 0 }}>🍔 Écarts</p>
-        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>Repas hors plan • -10 pts/écart</p>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={() => onChange(Math.max(0, value - 1))} style={{ width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
-        <span style={{ fontSize: 24, fontWeight: 'bold', color: value > 0 ? '#ef4444' : 'white', minWidth: 30, textAlign: 'center' }}>{value}</span>
-        <button onClick={() => onChange(value + 1)} style={{ width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'rgba(239,68,68,0.3)', color: 'white', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-      </div>
-    </div>
-  </div>
-);
 
 const ProfileInput = ({ label, value, onChange, type = 'number', options }) => (
   <div style={{ marginBottom: 12 }}>
@@ -337,11 +424,11 @@ export default function CoachZen() {
               <CircularProgress progress={score} size={100} />
             </div>
 
-            <KcalProgress consumed={totalKcal} target={tdee} />
+            <KcalProgress consumed={totalKcal} target={tdee} ecarts={dayData.ecarts} />
 
             {Object.entries(MEALS).map(([k, m]) => <HabitCard key={k} meal={m} checked={dayData.habits[k]} onChange={v => updateHabit(k, v)} />)}
 
-            <EcartsCounter value={dayData.ecarts || 0} onChange={v => setDayData(p => ({ ...p, ecarts: v }))} />
+            <EcartsSection ecarts={dayData.ecarts || { petit: 0, moyen: 0, gros: 0 }} onChange={e => setDayData(p => ({ ...p, ecarts: e }))} />
 
             <div style={card}>
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 10 }}>⚡ Énergie</p>
