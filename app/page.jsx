@@ -33,6 +33,15 @@ const calcTDEE = (bmr, activity) => {
   return Math.round(bmr * (factors[activity] || 1.55));
 };
 
+const isMonday = () => new Date().getDay() === 1;
+const getWeekNumber = (d) => {
+  const date = new Date(d);
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+  const week1 = new Date(date.getFullYear(), 0, 4);
+  return 1 + Math.round(((date - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+};
+
 const MEALS = {
   breakfast: { title: 'Petit-déjeuner', time: 'Matin', items: ['6 oeufs', 'Café', 'Eau + sel'], emoji: '🍳', colors: ['#f97316', '#f59e0b'], points: 20, kcal: 450 },
   lunch: { title: 'Déjeuner', time: 'Midi', items: ['250g riz', '300g protéine', 'Légumes'], emoji: '🥗', colors: ['#10b981', '#14b8a6'], points: 20, kcal: 850 },
@@ -73,7 +82,6 @@ const KcalProgress = ({ consumed, target, ecarts }) => {
   
   return (
     <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 14, marginBottom: 12, border: '1px solid rgba(255,255,255,0.1)' }}>
-      {/* Header avec indicateur */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)' }}>🔥 Calories</span>
@@ -94,9 +102,7 @@ const KcalProgress = ({ consumed, target, ecarts }) => {
         <span style={{ fontSize: 16, fontWeight: 'bold', color: isDeficit ? '#10b981' : '#ef4444' }}>{total} / {target}</span>
       </div>
       
-      {/* Barre de progression */}
       <div style={{ height: 10, background: 'rgba(255,255,255,0.1)', borderRadius: 5, overflow: 'hidden', position: 'relative' }}>
-        {/* Ligne du TDEE */}
         <div style={{ position: 'absolute', left: `${Math.min(100, (target / (target * 1.2)) * 100)}%`, top: 0, bottom: 0, width: 2, background: 'rgba(255,255,255,0.5)', zIndex: 2 }} />
         <div style={{ display: 'flex', height: '100%' }}>
           <div style={{ height: '100%', background: 'linear-gradient(to right, #10b981, #14b8a6)', width: `${Math.min((consumed / (target * 1.2)) * 100, 100)}%`, transition: 'width 0.5s' }} />
@@ -104,7 +110,6 @@ const KcalProgress = ({ consumed, target, ecarts }) => {
         </div>
       </div>
       
-      {/* Détails */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
         <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
           Plan: {consumed} {ecartsKcal > 0 && <span style={{ color: '#f97316' }}>+ {ecartsKcal} écarts</span>}
@@ -114,7 +119,6 @@ const KcalProgress = ({ consumed, target, ecarts }) => {
         </span>
       </div>
       
-      {/* Message explicatif */}
       <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 8, background: isMaintenance ? 'rgba(59,130,246,0.1)' : isDeficit ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)' }}>
         <p style={{ fontSize: 11, color: isMaintenance ? '#60a5fa' : isDeficit ? '#34d399' : '#fca5a5', margin: 0, textAlign: 'center' }}>
           {isMaintenance 
@@ -125,6 +129,111 @@ const KcalProgress = ({ consumed, target, ecarts }) => {
           }
         </p>
       </div>
+    </div>
+  );
+};
+
+const WeighInReminder = ({ onWeighIn, lastWeighIn }) => {
+  const today = formatDate(new Date());
+  const alreadyWeighedThisWeek = lastWeighIn && getWeekNumber(lastWeighIn) === getWeekNumber(today);
+  
+  if (!isMonday() || alreadyWeighedThisWeek) return null;
+  
+  return (
+    <div style={{ background: 'linear-gradient(135deg, rgba(6,182,212,0.2), rgba(59,130,246,0.2))', borderRadius: 16, padding: 14, marginBottom: 12, border: '1px solid rgba(6,182,212,0.3)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ fontSize: 20 }}>⚖️</span>
+        </div>
+        <div style={{ flex: 1 }}>
+          <p style={{ fontSize: 14, fontWeight: 'bold', color: 'white', margin: 0 }}>Pesée du lundi</p>
+          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>C'est le moment de te peser !</p>
+        </div>
+        <button onClick={onWeighIn} style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', border: 'none', borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }}>
+          <span style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>Peser</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const WeightModal = ({ isOpen, onClose, onSave, currentWeight }) => {
+  const [weight, setWeight] = useState(currentWeight || 75);
+  
+  if (!isOpen) return null;
+  
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={onClose}>
+      <div style={{ background: '#1e293b', borderRadius: 20, padding: 20, maxWidth: 320, width: '100%' }} onClick={e => e.stopPropagation()}>
+        <h2 style={{ fontSize: 20, fontWeight: 'bold', margin: '0 0 16px', textAlign: 'center', background: 'linear-gradient(to right, #06b6d4, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>⚖️ Pesée</h2>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', display: 'block', marginBottom: 8 }}>Ton poids aujourd'hui</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button onClick={() => setWeight(w => Math.max(40, w - 0.1))} style={{ width: 44, height: 44, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 20 }}>−</button>
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <span style={{ fontSize: 36, fontWeight: 'bold', color: 'white' }}>{weight.toFixed(1)}</span>
+              <span style={{ fontSize: 16, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>kg</span>
+            </div>
+            <button onClick={() => setWeight(w => Math.min(200, w + 0.1))} style={{ width: 44, height: 44, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 20 }}>+</button>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 14 }}>Annuler</button>
+          <button onClick={() => { onSave(weight); onClose(); }} style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', color: 'white', fontSize: 14, fontWeight: 'bold' }}>Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const WeightChart = ({ weightHistory }) => {
+  if (!weightHistory || weightHistory.length === 0) return null;
+  
+  const sorted = [...weightHistory].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(-12);
+  const weights = sorted.map(w => w.weight);
+  const min = Math.min(...weights) - 1;
+  const max = Math.max(...weights) + 1;
+  const range = max - min || 1;
+  
+  const first = weights[0];
+  const last = weights[weights.length - 1];
+  const diff = last - first;
+  
+  return (
+    <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 14, marginBottom: 12, border: '1px solid rgba(255,255,255,0.1)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, margin: 0, fontWeight: 'bold' }}>⚖️ ÉVOLUTION POIDS</p>
+        {weights.length >= 2 && (
+          <div style={{ padding: '4px 10px', borderRadius: 8, background: diff <= 0 ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)' }}>
+            <span style={{ fontSize: 12, fontWeight: 'bold', color: diff <= 0 ? '#10b981' : '#ef4444' }}>
+              {diff <= 0 ? '📉' : '📈'} {diff > 0 ? '+' : ''}{diff.toFixed(1)} kg
+            </span>
+          </div>
+        )}
+      </div>
+      
+      <div style={{ height: 80, display: 'flex', alignItems: 'flex-end', gap: 4, marginBottom: 8 }}>
+        {sorted.map((w, i) => {
+          const height = ((w.weight - min) / range) * 60 + 10;
+          const isLast = i === sorted.length - 1;
+          return (
+            <div key={w.date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>{w.weight}</span>
+              <div style={{ 
+                width: '100%', 
+                height, 
+                background: isLast ? 'linear-gradient(to top, #06b6d4, #3b82f6)' : 'linear-gradient(to top, rgba(6,182,212,0.3), rgba(59,130,246,0.3))', 
+                borderRadius: 4 
+              }} />
+              <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)' }}>S{getWeekNumber(w.date)}</span>
+            </div>
+          );
+        })}
+      </div>
+      
+      <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', margin: 0, textAlign: 'center' }}>
+        {sorted.length} pesée{sorted.length > 1 ? 's' : ''} • {sorted[0]?.weight}kg → {sorted[sorted.length - 1]?.weight}kg
+      </p>
     </div>
   );
 };
@@ -300,14 +409,18 @@ export default function CoachZen() {
   const [analysis, setAnalysis] = useState('');
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisPeriod, setAnalysisPeriod] = useState('week');
+  const [weightHistory, setWeightHistory] = useState([]);
+  const [showWeightModal, setShowWeightModal] = useState(false);
 
   const isToday = selectedDate === realToday;
 
   useEffect(() => {
     const saved = loadData('cz_data', {});
     const savedProfile = loadData('cz_profile', { poids: 75, taille: 175, age: 30, sexe: 'homme', activite: 'modere' });
+    const savedWeight = loadData('cz_weight', []);
     setAllData(saved);
     setProfile(savedProfile);
+    setWeightHistory(savedWeight);
     setDayData(saved[realToday] || getDefaultDay());
     setLoaded(true);
     
@@ -334,12 +447,23 @@ export default function CoachZen() {
   }, [dayData, loaded]);
 
   useEffect(() => { if (loaded) saveData('cz_profile', profile); }, [profile, loaded]);
+  useEffect(() => { if (loaded) saveData('cz_weight', weightHistory); }, [weightHistory, loaded]);
+
+  const saveWeight = (weight) => {
+    const today = formatDate(new Date());
+    const newHistory = weightHistory.filter(w => w.date !== today);
+    newHistory.push({ date: today, weight });
+    setWeightHistory(newHistory);
+    setProfile(p => ({ ...p, poids: weight }));
+  };
+
+  const lastWeighIn = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1]?.date : null;
 
   const fetchAnalysis = async (period) => {
     setAnalysisLoading(true);
     setAnalysisPeriod(period);
     try {
-      const res = await fetch('/api/coach/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ allData, profile, period }) });
+      const res = await fetch('/api/coach/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ allData, profile, period, weightHistory }) });
       const data = await res.json();
       setAnalysis(data.analysis);
     } catch { setAnalysis("Erreur lors de l'analyse."); }
@@ -414,6 +538,7 @@ export default function CoachZen() {
               <h1 style={{ fontSize: 26, fontWeight: 'bold', margin: '4px 0', background: isToday ? 'linear-gradient(to right, white, #e9d5ff)' : 'linear-gradient(to right, #fbbf24, #f97316)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{selectedDateObj.getDate()} {getMonthName(selectedDateObj)}</h1>
             </div>
 
+            {isToday && <WeighInReminder onWeighIn={() => setShowWeightModal(true)} lastWeighIn={lastWeighIn} />}
             {isToday && <CoachBubble message={coachMessage} onDismiss={() => setCoachMessage(null)} />}
 
             <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16 }}>
@@ -508,6 +633,13 @@ export default function CoachZen() {
               <div style={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: 14, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 26, fontWeight: 'bold', margin: 0 }}>{monthAvg}</p><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>moy</p></div>
             </div>
 
+            <WeightChart weightHistory={weightHistory} />
+
+            <button onClick={() => setShowWeightModal(true)} style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <span style={{ fontSize: 18 }}>⚖️</span>
+              <span style={{ color: 'white', fontSize: 14, fontWeight: 'bold' }}>Enregistrer mon poids</span>
+            </button>
+
             <div style={card}>
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginBottom: 10, fontWeight: 'bold' }}>📈 7 DERNIERS JOURS</p>
               <MiniChart data={last7Days} height={60} />
@@ -554,6 +686,7 @@ export default function CoachZen() {
         ))}
       </nav>
 
+      <WeightModal isOpen={showWeightModal} onClose={() => setShowWeightModal(false)} onSave={saveWeight} currentWeight={profile.poids} />
       <AnalysisModal isOpen={showAnalysis} onClose={() => setShowAnalysis(false)} analysis={analysis} loading={analysisLoading} period={analysisPeriod} onChangePeriod={fetchAnalysis} />
     </div>
   );
