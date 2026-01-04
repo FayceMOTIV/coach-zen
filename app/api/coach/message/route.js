@@ -1,26 +1,32 @@
 export async function POST(request) {
   try {
     const apiKey = process.env.OPENAI_API_KEY;
-    
     if (!apiKey) {
-      // Pas de clé = on retourne silence, l'app fonctionne quand même
       return Response.json({ message: null, type: "silence" });
     }
     
     const body = await request.json();
+    const hour = new Date().getHours();
     
-    const systemPrompt = `Tu es Zen, un coach personnel silencieux.
-RÈGLES:
-- Maximum 1-2 phrases
-- Pas d'emojis
-- Ton calme, direct
-- Jamais moralisateur
-- Ne jamais mentionner: calories, macros, régime
+    const systemPrompt = `Tu es Zen, un coach personnel silencieux et bienveillant.
 
-Si pas de message pertinent, réponds: SILENCE`;
+RÈGLES STRICTES:
+- Maximum 1 phrase courte (10-15 mots max)
+- Pas d'emojis, pas de ponctuation excessive
+- Ton calme, direct, jamais moralisateur
+- Tu es un ami loyal quand l'énergie est basse
+- Tu es un coach exigeant quand l'énergie est bonne
+- JAMAIS de mots comme: calories, régime, poids, maigrir
 
-    const userPrompt = `Contexte: énergie ${body.energy}/5, score ${body.score}/100, créneau ${body.slot || 'inconnu'}.
-Génère UN message court.`;
+EXEMPLES DE BONS MESSAGES:
+- "Les oeufs posent les bases."
+- "Zone sensible. Tiens le cap."
+- "Craquage prévu. Zéro culpabilité."
+- "Journée difficile. Fais le minimum."
+
+Si tu n'as rien de pertinent à dire, réponds exactement: SILENCE`;
+
+    const context = `Heure: ${hour}h. Énergie: ${body.energy}/5. Score actuel: ${body.score}/100. Créneau: ${body.slot}.`;
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -32,10 +38,10 @@ Génère UN message court.`;
         model: "gpt-3.5-turbo",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
+          { role: "user", content: context },
         ],
-        temperature: 0.3,
-        max_tokens: 100,
+        temperature: 0.4,
+        max_tokens: 60,
       }),
     });
     
@@ -44,13 +50,16 @@ Génère UN message court.`;
     }
     
     const data = await response.json();
-    const message = data.choices?.[0]?.message?.content?.trim();
+    let message = data.choices?.[0]?.message?.content?.trim();
     
-    if (!message || message === "SILENCE") {
+    if (!message || message === "SILENCE" || message.includes("SILENCE")) {
       return Response.json({ message: null, type: "silence" });
     }
     
-    return Response.json({ message, type: "standard" });
+    // Clean up
+    message = message.replace(/["']/g, '').substring(0, 100);
+    
+    return Response.json({ message, type: "ai" });
     
   } catch (error) {
     return Response.json({ message: null, type: "silence" });
@@ -58,8 +67,5 @@ Génère UN message court.`;
 }
 
 export async function GET() {
-  return Response.json({ 
-    status: "ok", 
-    aiEnabled: !!process.env.OPENAI_API_KEY 
-  });
+  return Response.json({ status: "ok", ai: !!process.env.OPENAI_API_KEY });
 }
