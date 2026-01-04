@@ -7,8 +7,18 @@ const getDayName = (d) => ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'][d.getDay()
 const getMonthName = (d) => ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][d.getMonth()];
 const loadData = (k, def) => { try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : def; } catch { return def; }};
 const saveData = (k, v) => localStorage.setItem(k, JSON.stringify(v));
-const getDefaultDay = () => ({ habits: { breakfast: false, lunch: false, snack: false, dinner: false, plannedTreat: false }, sleep: 7, nap: 0, energy: 3, movement: { workout: false, walk: false }});
-const calcScore = (d) => { let s = 0; if(d?.habits) Object.values(d.habits).forEach(c => { if(c) s += 20; }); if(d?.sleep >= 6.5) s += 10; if(d?.nap >= 60) s += 5; if(d?.movement?.workout) s += 5; if(d?.movement?.walk) s += 5; return Math.min(s, 100); };
+const getDefaultDay = () => ({ habits: { breakfast: false, lunch: false, snack: false, dinner: false, plannedTreat: false }, sleep: 7, nap: 0, energy: 3, movement: { workout: false, walk: false, run: false }, ecarts: 0 });
+const calcScore = (d) => { 
+  let s = 0; 
+  if(d?.habits) Object.values(d.habits).forEach(c => { if(c) s += 20; }); 
+  if(d?.sleep >= 6.5) s += 10; 
+  if(d?.nap >= 60) s += 5; 
+  if(d?.movement?.workout) s += 5; 
+  if(d?.movement?.walk) s += 5; 
+  if(d?.movement?.run) s += 5;
+  s -= (d?.ecarts || 0) * 10;
+  return Math.max(0, Math.min(s, 100)); 
+};
 
 const calcBMR = (profile) => {
   if (!profile.poids || !profile.taille || !profile.age) return 0;
@@ -119,6 +129,22 @@ const CoachBubble = ({ message, onDismiss }) => {
     </div>
   );
 };
+
+const EcartsCounter = ({ value, onChange }) => (
+  <div style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(249,115,22,0.1))', borderRadius: 16, padding: 14, marginBottom: 12, border: '1px solid rgba(239,68,68,0.2)' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div>
+        <p style={{ fontSize: 14, fontWeight: 'bold', color: 'white', margin: 0 }}>🍔 Écarts</p>
+        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>Repas hors plan • -10 pts/écart</p>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button onClick={() => onChange(Math.max(0, value - 1))} style={{ width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+        <span style={{ fontSize: 24, fontWeight: 'bold', color: value > 0 ? '#ef4444' : 'white', minWidth: 30, textAlign: 'center' }}>{value}</span>
+        <button onClick={() => onChange(value + 1)} style={{ width: 36, height: 36, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'rgba(239,68,68,0.3)', color: 'white', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+      </div>
+    </div>
+  </div>
+);
 
 const ProfileInput = ({ label, value, onChange, type = 'number', options }) => (
   <div style={{ marginBottom: 12 }}>
@@ -315,6 +341,8 @@ export default function CoachZen() {
 
             {Object.entries(MEALS).map(([k, m]) => <HabitCard key={k} meal={m} checked={dayData.habits[k]} onChange={v => updateHabit(k, v)} />)}
 
+            <EcartsCounter value={dayData.ecarts || 0} onChange={v => setDayData(p => ({ ...p, ecarts: v }))} />
+
             <div style={card}>
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 10 }}>⚡ Énergie</p>
               <EnergySelector value={dayData.energy} onChange={v => setDayData(p => ({ ...p, energy: v }))} />
@@ -325,12 +353,19 @@ export default function CoachZen() {
               <Slider value={dayData.nap} onChange={v => setDayData(p => ({ ...p, nap: v }))} min={0} max={120} step={15} label="Sieste" unit="min" color="linear-gradient(to right, #f59e0b, #ef4444)" icon="☀️" />
             </div>
 
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => updateMovement('workout', !dayData.movement?.workout)} style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: dayData.movement?.workout ? 'linear-gradient(135deg, #ec4899, #f43f5e)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <span style={{ fontSize: 20 }}>🏋️</span><span style={{ color: dayData.movement?.workout ? 'white' : 'rgba(255,255,255,0.5)', fontSize: 14 }}>Muscu</span>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginBottom: 8 }}>🏃 Activité (+5 pts)</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              <button onClick={() => updateMovement('workout', !dayData.movement?.workout)} style={{ padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: dayData.movement?.workout ? 'linear-gradient(135deg, #ec4899, #f43f5e)' : 'rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 24 }}>🏋️</span>
+                <span style={{ color: dayData.movement?.workout ? 'white' : 'rgba(255,255,255,0.5)', fontSize: 12 }}>Muscu</span>
               </button>
-              <button onClick={() => updateMovement('walk', !dayData.movement?.walk)} style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: dayData.movement?.walk ? 'linear-gradient(135deg, #06b6d4, #3b82f6)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <span style={{ fontSize: 20 }}>🚶</span><span style={{ color: dayData.movement?.walk ? 'white' : 'rgba(255,255,255,0.5)', fontSize: 14 }}>Marche</span>
+              <button onClick={() => updateMovement('run', !dayData.movement?.run)} style={{ padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: dayData.movement?.run ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 'rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 24 }}>🏃</span>
+                <span style={{ color: dayData.movement?.run ? 'white' : 'rgba(255,255,255,0.5)', fontSize: 12 }}>Course</span>
+              </button>
+              <button onClick={() => updateMovement('walk', !dayData.movement?.walk)} style={{ padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: dayData.movement?.walk ? 'linear-gradient(135deg, #06b6d4, #3b82f6)' : 'rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 24 }}>🚶</span>
+                <span style={{ color: dayData.movement?.walk ? 'white' : 'rgba(255,255,255,0.5)', fontSize: 12 }}>Marche</span>
               </button>
             </div>
           </>

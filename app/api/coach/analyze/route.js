@@ -21,7 +21,10 @@ export async function POST(request) {
       avgSleep: recentData.length > 0 ? (recentData.reduce((a, b) => a + (b.sleep || 0), 0) / recentData.length).toFixed(1) : 0,
       avgEnergy: recentData.length > 0 ? (recentData.reduce((a, b) => a + (b.energy || 3), 0) / recentData.length).toFixed(1) : 3,
       workoutDays: recentData.filter(d => d.movement?.workout).length,
+      runDays: recentData.filter(d => d.movement?.run).length,
       walkDays: recentData.filter(d => d.movement?.walk).length,
+      totalEcarts: recentData.reduce((a, b) => a + (b.ecarts || 0), 0),
+      daysWithEcarts: recentData.filter(d => (d.ecarts || 0) > 0).length,
       trend: recentData.length >= 7 ? (recentData.slice(-7).reduce((a,b) => a + b.score, 0) / 7) - (recentData.slice(-14, -7).reduce((a,b) => a + b.score, 0) / Math.max(1, recentData.slice(-14, -7).length)) : 0
     };
 
@@ -32,26 +35,33 @@ STYLE: Français, tutoiement, direct mais encourageant, emojis avec parcimonie, 
 FORMAT (${period}):
 1. **Résumé** (2-3 phrases)
 2. **Points forts** 
-3. **Points d'attention**
+3. **Points d'attention** (inclure les écarts si présents)
 4. **Pattern détecté**
 5. **Conseil personnalisé**
 
-Max 200 mots.`;
+IMPORTANT sur les ÉCARTS:
+- Si écarts > 0, analyse-les sans juger mais en proposant des solutions
+- Identifie les patterns (jours de semaine vs weekend, etc.)
+- Propose des alternatives concrètes
+
+Max 250 mots.`;
 
     const userPrompt = `Analyse ${period === 'week' ? '7 jours' : '30 jours'}:
 
 STATS: ${stats.totalDays} jours, score moyen ${stats.avgScore}/100, tendance ${stats.trend > 5 ? 'hausse' : stats.trend < -5 ? 'baisse' : 'stable'}
 
-HABITUDES (sur ${stats.totalDays}j): Petit-déj ${stats.habitsFrequency.breakfast}x, Déjeuner ${stats.habitsFrequency.lunch}x, Collation ${stats.habitsFrequency.snack}x, Dîner ${stats.habitsFrequency.dinner}x, Craquage ${stats.habitsFrequency.plannedTreat}x
+HABITUDES (sur ${stats.totalDays}j): Petit-déj ${stats.habitsFrequency.breakfast}x, Déjeuner ${stats.habitsFrequency.lunch}x, Collation ${stats.habitsFrequency.snack}x, Dîner ${stats.habitsFrequency.dinner}x, Craquage planifié ${stats.habitsFrequency.plannedTreat}x
 
-AUTRES: Sommeil ${stats.avgSleep}h, Énergie ${stats.avgEnergy}/5, Muscu ${stats.workoutDays}x, Marche ${stats.walkDays}x
+ÉCARTS: ${stats.totalEcarts} écarts sur ${stats.daysWithEcarts} jours (repas hors plan, cheat meals)
+
+ACTIVITÉ: Sommeil ${stats.avgSleep}h, Énergie ${stats.avgEnergy}/5, Muscu ${stats.workoutDays}x, Course ${stats.runDays}x, Marche ${stats.walkDays}x
 
 PROFIL: ${profile.sexe}, ${profile.age} ans, ${profile.poids}kg`;
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-      body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }], temperature: 0.7, max_tokens: 500 }),
+      body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }], temperature: 0.7, max_tokens: 600 }),
     });
     
     if (!response.ok) return Response.json({ analysis: "Erreur lors de l'analyse." });
@@ -69,5 +79,7 @@ function calcScore(d) {
   if (d?.nap >= 60) s += 5;
   if (d?.movement?.workout) s += 5;
   if (d?.movement?.walk) s += 5;
-  return Math.min(s, 100);
+  if (d?.movement?.run) s += 5;
+  s -= (d?.ecarts || 0) * 10;
+  return Math.max(0, Math.min(s, 100));
 }
