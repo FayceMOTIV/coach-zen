@@ -8,6 +8,16 @@ export async function POST(request) {
     const dates = Object.keys(allData).sort().slice(-30);
     const recentData = dates.map(date => ({ date, ...allData[date], score: calcScore(allData[date]) }));
     
+    const getEcartsCount = (e) => (e?.petit || 0) + (e?.moyen || 0) + (e?.gros || 0);
+    const getEcartsKcal = (e) => ((e?.petit || 0) * 300) + ((e?.moyen || 0) * 600) + ((e?.gros || 0) * 1000);
+    
+    const totalEcarts = { petit: 0, moyen: 0, gros: 0 };
+    recentData.forEach(d => {
+      totalEcarts.petit += d.ecarts?.petit || 0;
+      totalEcarts.moyen += d.ecarts?.moyen || 0;
+      totalEcarts.gros += d.ecarts?.gros || 0;
+    });
+    
     const stats = {
       totalDays: dates.length,
       avgScore: recentData.length > 0 ? Math.round(recentData.reduce((a, b) => a + b.score, 0) / recentData.length) : 0,
@@ -23,8 +33,10 @@ export async function POST(request) {
       workoutDays: recentData.filter(d => d.movement?.workout).length,
       runDays: recentData.filter(d => d.movement?.run).length,
       walkDays: recentData.filter(d => d.movement?.walk).length,
-      totalEcarts: recentData.reduce((a, b) => a + (b.ecarts || 0), 0),
-      daysWithEcarts: recentData.filter(d => (d.ecarts || 0) > 0).length,
+      ecarts: totalEcarts,
+      totalEcartsCount: totalEcarts.petit + totalEcarts.moyen + totalEcarts.gros,
+      totalEcartsKcal: (totalEcarts.petit * 300) + (totalEcarts.moyen * 600) + (totalEcarts.gros * 1000),
+      daysWithEcarts: recentData.filter(d => getEcartsCount(d.ecarts) > 0).length,
       trend: recentData.length >= 7 ? (recentData.slice(-7).reduce((a,b) => a + b.score, 0) / 7) - (recentData.slice(-14, -7).reduce((a,b) => a + b.score, 0) / Math.max(1, recentData.slice(-14, -7).length)) : 0
     };
 
@@ -40,9 +52,11 @@ FORMAT (${period}):
 5. **Conseil personnalisé**
 
 IMPORTANT sur les ÉCARTS:
-- Si écarts > 0, analyse-les sans juger mais en proposant des solutions
-- Identifie les patterns (jours de semaine vs weekend, etc.)
-- Propose des alternatives concrètes
+- Petit écart (300 kcal) = snack, grignotage
+- Moyen écart (600 kcal) = fast food, resto
+- Gros écart (1000 kcal) = grosse bouffe
+- Analyse les types d'écarts pour identifier les patterns
+- Propose des alternatives concrètes selon le type
 
 Max 250 mots.`;
 
@@ -52,7 +66,10 @@ STATS: ${stats.totalDays} jours, score moyen ${stats.avgScore}/100, tendance ${s
 
 HABITUDES (sur ${stats.totalDays}j): Petit-déj ${stats.habitsFrequency.breakfast}x, Déjeuner ${stats.habitsFrequency.lunch}x, Collation ${stats.habitsFrequency.snack}x, Dîner ${stats.habitsFrequency.dinner}x, Craquage planifié ${stats.habitsFrequency.plannedTreat}x
 
-ÉCARTS: ${stats.totalEcarts} écarts sur ${stats.daysWithEcarts} jours (repas hors plan, cheat meals)
+ÉCARTS: ${stats.totalEcartsCount} écarts sur ${stats.daysWithEcarts} jours = ${stats.totalEcartsKcal} kcal
+- Petits (snacks): ${stats.ecarts.petit}x
+- Moyens (fast food): ${stats.ecarts.moyen}x  
+- Gros (grosse bouffe): ${stats.ecarts.gros}x
 
 ACTIVITÉ: Sommeil ${stats.avgSleep}h, Énergie ${stats.avgEnergy}/5, Muscu ${stats.workoutDays}x, Course ${stats.runDays}x, Marche ${stats.walkDays}x
 
@@ -80,6 +97,7 @@ function calcScore(d) {
   if (d?.movement?.workout) s += 5;
   if (d?.movement?.walk) s += 5;
   if (d?.movement?.run) s += 5;
-  s -= (d?.ecarts || 0) * 10;
+  const ecartsCount = (d?.ecarts?.petit || 0) + (d?.ecarts?.moyen || 0) + (d?.ecarts?.gros || 0);
+  s -= ecartsCount * 10;
   return Math.max(0, Math.min(s, 100));
 }
