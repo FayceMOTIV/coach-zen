@@ -156,7 +156,7 @@ const EcartsSection = ({ ecarts, onChange }) => {
   const totalCount = getEcartsCount(ecarts);
   
   return (
-    <div style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(249,115,22,0.1))', borderRadius: 16, padding: 14, marginBottom: 12, border: '1px solid rgba(239,68,68,0.2)' }}>
+    <div style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(249,115,22,0.1))', borderRadius: 16, padding: 12, marginBottom: 12, border: '1px solid rgba(239,68,68,0.2)', overflow: 'hidden' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div>
           <p style={{ fontSize: 14, fontWeight: 'bold', color: 'white', margin: 0 }}>🍔 Écarts</p>
@@ -168,7 +168,7 @@ const EcartsSection = ({ ecarts, onChange }) => {
           </div>
         )}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
         {ECARTS.map(e => {
           const count = ecarts?.[e.id] || 0;
           return (
@@ -179,9 +179,9 @@ const EcartsSection = ({ ecarts, onChange }) => {
                 <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', margin: '2px 0 0' }}>{e.kcal} kcal</p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <button onClick={() => updateEcart(e.id, -1)} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 16 }}>−</button>
+                <button onClick={() => updateEcart(e.id, -1)} style={{ width: 26, height: 26, borderRadius: 6, border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 16 }}>−</button>
                 <span style={{ fontSize: 18, fontWeight: 'bold', color: count > 0 ? e.color : 'white', minWidth: 24, textAlign: 'center' }}>{count}</span>
-                <button onClick={() => updateEcart(e.id, 1)} style={{ width: 28, height: 28, borderRadius: 8, border: 'none', cursor: 'pointer', background: `${e.color}40`, color: 'white', fontSize: 16 }}>+</button>
+                <button onClick={() => updateEcart(e.id, 1)} style={{ width: 26, height: 26, borderRadius: 6, border: 'none', cursor: 'pointer', background: `${e.color}40`, color: 'white', fontSize: 16 }}>+</button>
               </div>
             </div>
           );
