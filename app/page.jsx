@@ -23,7 +23,7 @@ const calcScore = (d) => {
 };
 
 const calcBMR = (profile) => {
-  if (!profile.poids || !profile.taille || !profile.age) return 0;
+  if (!profile?.poids || !profile?.taille || !profile?.age) return 0;
   if (profile.sexe === 'homme') return Math.round(10 * profile.poids + 6.25 * profile.taille - 5 * profile.age + 5);
   return Math.round(10 * profile.poids + 6.25 * profile.taille - 5 * profile.age - 161);
 };
@@ -51,9 +51,9 @@ const MEALS = {
 };
 
 const ECARTS = [
-  { id: 'petit', emoji: '🍪', label: 'Petit', desc: 'Snack, grignotage', kcal: 300, color: '#f59e0b' },
-  { id: 'moyen', emoji: '🍔', label: 'Moyen', desc: 'Fast food, resto', kcal: 600, color: '#f97316' },
-  { id: 'gros', emoji: '🍕', label: 'Gros', desc: 'Grosse bouffe', kcal: 1000, color: '#ef4444' },
+  { id: 'petit', emoji: '🍪', label: 'Petit', kcal: 300, color: '#f59e0b' },
+  { id: 'moyen', emoji: '🍔', label: 'Moyen', kcal: 600, color: '#f97316' },
+  { id: 'gros', emoji: '🍕', label: 'Gros', kcal: 1000, color: '#ef4444' },
 ];
 
 const CircularProgress = ({ progress, size = 100 }) => {
@@ -75,7 +75,6 @@ const CircularProgress = ({ progress, size = 100 }) => {
 const KcalProgress = ({ consumed, target, ecarts }) => {
   const ecartsKcal = getEcartsKcal(ecarts);
   const total = consumed + ecartsKcal;
-  const pct = target > 0 ? Math.min((total / target) * 100, 120) : 0;
   const diff = target - total;
   const isDeficit = diff > 0;
   const isMaintenance = Math.abs(diff) <= 100;
@@ -103,7 +102,7 @@ const KcalProgress = ({ consumed, target, ecarts }) => {
       </div>
       
       <div style={{ height: 10, background: 'rgba(255,255,255,0.1)', borderRadius: 5, overflow: 'hidden', position: 'relative' }}>
-        <div style={{ position: 'absolute', left: `${Math.min(100, (target / (target * 1.2)) * 100)}%`, top: 0, bottom: 0, width: 2, background: 'rgba(255,255,255,0.5)', zIndex: 2 }} />
+        <div style={{ position: 'absolute', left: '83.3%', top: 0, bottom: 0, width: 2, background: 'rgba(255,255,255,0.5)', zIndex: 2 }} />
         <div style={{ display: 'flex', height: '100%' }}>
           <div style={{ height: '100%', background: 'linear-gradient(to right, #10b981, #14b8a6)', width: `${Math.min((consumed / (target * 1.2)) * 100, 100)}%`, transition: 'width 0.5s' }} />
           {ecartsKcal > 0 && <div style={{ height: '100%', background: 'linear-gradient(to right, #f97316, #ef4444)', width: `${Math.min((ecartsKcal / (target * 1.2)) * 100, 100)}%`, transition: 'width 0.5s' }} />}
@@ -124,8 +123,8 @@ const KcalProgress = ({ consumed, target, ecarts }) => {
           {isMaintenance 
             ? '⚖️ Tu maintiens ton poids actuel' 
             : isDeficit 
-              ? `📉 Tu perds environ ${Math.round(diff / 7700 * 100) / 100} kg cette semaine à ce rythme`
-              : `📈 Tu prends environ ${Math.round(Math.abs(diff) / 7700 * 100) / 100} kg cette semaine à ce rythme`
+              ? `📉 Tu perds environ ${(diff / 7700 * 7).toFixed(2)} kg/semaine`
+              : `📈 Tu prends environ ${(Math.abs(diff) / 7700 * 7).toFixed(2)} kg/semaine`
           }
         </p>
       </div>
@@ -157,37 +156,15 @@ const WeighInReminder = ({ onWeighIn, lastWeighIn }) => {
   );
 };
 
-const WeightModal = ({ isOpen, onClose, onSave, currentWeight }) => {
-  const [weight, setWeight] = useState(currentWeight || 75);
-  
-  if (!isOpen) return null;
-  
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={onClose}>
-      <div style={{ background: '#1e293b', borderRadius: 20, padding: 20, maxWidth: 320, width: '100%' }} onClick={e => e.stopPropagation()}>
-        <h2 style={{ fontSize: 20, fontWeight: 'bold', margin: '0 0 16px', textAlign: 'center', background: 'linear-gradient(to right, #06b6d4, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>⚖️ Pesée</h2>
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', display: 'block', marginBottom: 8 }}>Ton poids aujourd'hui</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button onClick={() => setWeight(w => Math.max(40, w - 0.1))} style={{ width: 44, height: 44, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 20 }}>−</button>
-            <div style={{ flex: 1, textAlign: 'center' }}>
-              <span style={{ fontSize: 36, fontWeight: 'bold', color: 'white' }}>{weight.toFixed(1)}</span>
-              <span style={{ fontSize: 16, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>kg</span>
-            </div>
-            <button onClick={() => setWeight(w => Math.min(200, w + 0.1))} style={{ width: 44, height: 44, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 20 }}>+</button>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 14 }}>Annuler</button>
-          <button onClick={() => { onSave(weight); onClose(); }} style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', color: 'white', fontSize: 14, fontWeight: 'bold' }}>Enregistrer</button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const WeightChart = ({ weightHistory }) => {
-  if (!weightHistory || weightHistory.length === 0) return null;
+  if (!weightHistory || weightHistory.length === 0) {
+    return (
+      <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 14, marginBottom: 12, border: '1px solid rgba(255,255,255,0.1)' }}>
+        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, margin: 0, fontWeight: 'bold' }}>⚖️ ÉVOLUTION POIDS</p>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, margin: '10px 0 0', textAlign: 'center' }}>Aucune pesée enregistrée</p>
+      </div>
+    );
+  }
   
   const sorted = [...weightHistory].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(-12);
   const weights = sorted.map(w => w.weight);
@@ -256,13 +233,14 @@ const HabitCard = ({ meal, checked, onChange }) => (
 );
 
 const EcartsSection = ({ ecarts, onChange }) => {
+  const safeEcarts = ecarts || { petit: 0, moyen: 0, gros: 0 };
   const updateEcart = (type, delta) => {
-    const current = ecarts?.[type] || 0;
+    const current = safeEcarts[type] || 0;
     const newVal = Math.max(0, current + delta);
-    onChange({ ...ecarts, [type]: newVal });
+    onChange({ ...safeEcarts, [type]: newVal });
   };
-  const totalKcal = getEcartsKcal(ecarts);
-  const totalCount = getEcartsCount(ecarts);
+  const totalKcal = getEcartsKcal(safeEcarts);
+  const totalCount = getEcartsCount(safeEcarts);
   
   return (
     <div style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(249,115,22,0.1))', borderRadius: 16, padding: 12, marginBottom: 12, border: '1px solid rgba(239,68,68,0.2)', overflow: 'hidden' }}>
@@ -279,7 +257,7 @@ const EcartsSection = ({ ecarts, onChange }) => {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
         {ECARTS.map(e => {
-          const count = ecarts?.[e.id] || 0;
+          const count = safeEcarts[e.id] || 0;
           return (
             <div key={e.id} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 10 }}>
               <div style={{ textAlign: 'center', marginBottom: 8 }}>
@@ -346,16 +324,17 @@ const ProfileInput = ({ label, value, onChange, type = 'number', options }) => (
   <div style={{ marginBottom: 12 }}>
     <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', display: 'block', marginBottom: 6 }}>{label}</label>
     {options ? (
-      <select value={value} onChange={e => onChange(e.target.value)} style={{ width: '100%', padding: 12, borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: 14 }}>
+      <select value={value || ''} onChange={e => onChange(e.target.value)} style={{ width: '100%', padding: 12, borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: 14 }}>
         {options.map(o => <option key={o.value} value={o.value} style={{ background: '#1e293b' }}>{o.label}</option>)}
       </select>
     ) : (
-      <input type={type} value={value} onChange={e => onChange(type === 'number' ? Number(e.target.value) : e.target.value)} style={{ width: '100%', padding: 12, borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: 14, boxSizing: 'border-box' }} />
+      <input type={type} value={value || ''} onChange={e => onChange(type === 'number' ? Number(e.target.value) : e.target.value)} style={{ width: '100%', padding: 12, borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: 14, boxSizing: 'border-box' }} />
     )}
   </div>
 );
 
 const MiniChart = ({ data, height = 60 }) => {
+  if (!data || data.length === 0) return null;
   const max = Math.max(...data.map(d => d.score), 1);
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height }}>
@@ -389,8 +368,48 @@ const AnalysisModal = ({ isOpen, onClose, analysis, loading, period, onChangePer
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         ) : (
-          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{analysis}</div>
+          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{analysis || 'Aucune analyse disponible.'}</div>
         )}
+      </div>
+    </div>
+  );
+};
+
+const WeightModal = ({ isOpen, onClose, onSave, currentWeight }) => {
+  const [weight, setWeight] = useState(75);
+  
+  useEffect(() => {
+    if (isOpen && currentWeight) {
+      setWeight(Number(currentWeight) || 75);
+    }
+  }, [isOpen, currentWeight]);
+  
+  if (!isOpen) return null;
+  
+  const handleSave = () => {
+    onSave(weight);
+    onClose();
+  };
+  
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={onClose}>
+      <div style={{ background: '#1e293b', borderRadius: 20, padding: 20, maxWidth: 320, width: '100%' }} onClick={e => e.stopPropagation()}>
+        <h2 style={{ fontSize: 20, fontWeight: 'bold', margin: '0 0 16px', textAlign: 'center', background: 'linear-gradient(to right, #06b6d4, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>⚖️ Pesée</h2>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', display: 'block', marginBottom: 8 }}>Ton poids aujourd'hui</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button onClick={() => setWeight(w => Math.round((Math.max(40, w - 0.1)) * 10) / 10)} style={{ width: 44, height: 44, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 20 }}>−</button>
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <span style={{ fontSize: 36, fontWeight: 'bold', color: 'white' }}>{weight.toFixed(1)}</span>
+              <span style={{ fontSize: 16, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>kg</span>
+            </div>
+            <button onClick={() => setWeight(w => Math.round((Math.min(200, w + 0.1)) * 10) / 10)} style={{ width: 44, height: 44, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 20 }}>+</button>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 14 }}>Annuler</button>
+          <button onClick={handleSave} style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #06b6d4, #3b82f6)', color: 'white', fontSize: 14, fontWeight: 'bold' }}>Enregistrer</button>
+        </div>
       </div>
     </div>
   );
@@ -415,46 +434,80 @@ export default function CoachZen() {
   const isToday = selectedDate === realToday;
 
   useEffect(() => {
-    const saved = loadData('cz_data', {});
-    const savedProfile = loadData('cz_profile', { poids: 75, taille: 175, age: 30, sexe: 'homme', activite: 'modere' });
-    const savedWeight = loadData('cz_weight', []);
-    setAllData(saved);
-    setProfile(savedProfile);
-    setWeightHistory(savedWeight);
-    setDayData(saved[realToday] || getDefaultDay());
-    setLoaded(true);
-    
-    const fetchCoach = async () => {
-      try {
-        const res = await fetch('/api/coach/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ energy: saved[realToday]?.energy || 3, score: calcScore(saved[realToday]), slot: new Date().getHours() >= 21 ? 'treatTime' : new Date().getHours() >= 17 ? 'lateAfternoon' : 'morning' }) });
-        const data = await res.json();
-        setCoachMessage(data.message || "Le plan commence.");
-      } catch { setCoachMessage("Le plan commence."); }
-    };
-    fetchCoach();
+    try {
+      const saved = loadData('cz_data', {});
+      const savedProfile = loadData('cz_profile', { poids: 75, taille: 175, age: 30, sexe: 'homme', activite: 'modere' });
+      const savedWeight = loadData('cz_weight', []);
+      setAllData(saved || {});
+      setProfile(savedProfile || { poids: 75, taille: 175, age: 30, sexe: 'homme', activite: 'modere' });
+      setWeightHistory(savedWeight || []);
+      setDayData(saved?.[realToday] || getDefaultDay());
+      setLoaded(true);
+      
+      const fetchCoach = async () => {
+        try {
+          const res = await fetch('/api/coach/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ energy: saved?.[realToday]?.energy || 3, score: calcScore(saved?.[realToday]), slot: new Date().getHours() >= 21 ? 'treatTime' : new Date().getHours() >= 17 ? 'lateAfternoon' : 'morning' }) });
+          const data = await res.json();
+          setCoachMessage(data.message || "Le plan commence.");
+        } catch { setCoachMessage("Le plan commence."); }
+      };
+      fetchCoach();
+    } catch (e) {
+      console.error('Init error:', e);
+      setLoaded(true);
+    }
   }, []);
 
   useEffect(() => {
-    if (loaded && allData[selectedDate]) setDayData(allData[selectedDate]);
-    else if (loaded) setDayData(getDefaultDay());
-  }, [selectedDate, loaded]);
+    if (loaded) {
+      if (allData[selectedDate]) {
+        setDayData(allData[selectedDate]);
+      } else {
+        setDayData(getDefaultDay());
+      }
+    }
+  }, [selectedDate, loaded, allData]);
 
   useEffect(() => {
     if (!loaded) return;
-    const newAll = { ...allData, [selectedDate]: dayData };
-    setAllData(newAll);
-    saveData('cz_data', newAll);
-  }, [dayData, loaded]);
+    try {
+      const newAll = { ...allData, [selectedDate]: dayData };
+      setAllData(newAll);
+      saveData('cz_data', newAll);
+    } catch (e) {
+      console.error('Save error:', e);
+    }
+  }, [dayData, loaded, selectedDate]);
 
-  useEffect(() => { if (loaded) saveData('cz_profile', profile); }, [profile, loaded]);
-  useEffect(() => { if (loaded) saveData('cz_weight', weightHistory); }, [weightHistory, loaded]);
+  useEffect(() => { 
+    if (loaded) {
+      try {
+        saveData('cz_profile', profile);
+      } catch (e) {
+        console.error('Profile save error:', e);
+      }
+    }
+  }, [profile, loaded]);
+  
+  useEffect(() => { 
+    if (loaded) {
+      try {
+        saveData('cz_weight', weightHistory);
+      } catch (e) {
+        console.error('Weight save error:', e);
+      }
+    }
+  }, [weightHistory, loaded]);
 
   const saveWeight = (weight) => {
-    const today = formatDate(new Date());
-    const newHistory = weightHistory.filter(w => w.date !== today);
-    newHistory.push({ date: today, weight });
-    setWeightHistory(newHistory);
-    setProfile(p => ({ ...p, poids: weight }));
+    try {
+      const today = formatDate(new Date());
+      const newHistory = [...weightHistory.filter(w => w.date !== today), { date: today, weight: Number(weight) }];
+      setWeightHistory(newHistory);
+      setProfile(p => ({ ...p, poids: Number(weight) }));
+    } catch (e) {
+      console.error('Weight save error:', e);
+    }
   };
 
   const lastWeighIn = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1]?.date : null;
@@ -465,7 +518,7 @@ export default function CoachZen() {
     try {
       const res = await fetch('/api/coach/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ allData, profile, period, weightHistory }) });
       const data = await res.json();
-      setAnalysis(data.analysis);
+      setAnalysis(data.analysis || 'Analyse indisponible.');
     } catch { setAnalysis("Erreur lors de l'analyse."); }
     setAnalysisLoading(false);
   };
@@ -473,18 +526,31 @@ export default function CoachZen() {
   const openAnalysis = (period = 'week') => { setShowAnalysis(true); fetchAnalysis(period); };
 
   const score = calcScore(dayData);
-  const totalKcal = Object.entries(MEALS).reduce((sum, [k, m]) => dayData.habits[k] ? sum + m.kcal : sum, 0);
+  const totalKcal = Object.entries(MEALS).reduce((sum, [k, m]) => dayData?.habits?.[k] ? sum + m.kcal : sum, 0);
   const bmr = calcBMR(profile);
-  const tdee = calcTDEE(bmr, profile.activite);
+  const tdee = calcTDEE(bmr, profile?.activite);
   const updateHabit = (k, v) => setDayData(p => ({ ...p, habits: { ...p.habits, [k]: v } }));
   const updateMovement = (k, v) => setDayData(p => ({ ...p, movement: { ...p.movement, [k]: v } }));
   const updateProfile = (k, v) => setProfile(p => ({ ...p, [k]: v }));
 
-  const streak = useMemo(() => { let s = 0; for (let i = 1; i <= 30; i++) { const d = new Date(); d.setDate(d.getDate() - i); if (allData[formatDate(d)] && calcScore(allData[formatDate(d)]) >= 50) s++; else break; } return s; }, [allData]);
+  const streak = useMemo(() => { 
+    let s = 0; 
+    for (let i = 1; i <= 30; i++) { 
+      const d = new Date(); 
+      d.setDate(d.getDate() - i); 
+      if (allData[formatDate(d)] && calcScore(allData[formatDate(d)]) >= 50) s++; 
+      else break; 
+    } 
+    return s; 
+  }, [allData]);
 
   const last14Days = useMemo(() => Array.from({ length: 14 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - (13 - i)); return d; }), []);
 
-  const last7Days = useMemo(() => Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - (6 - i)); return { date: formatDate(d), score: allData[formatDate(d)] ? calcScore(allData[formatDate(d)]) : 0, label: d.getDate().toString() }; }), [allData]);
+  const last7Days = useMemo(() => Array.from({ length: 7 }, (_, i) => { 
+    const d = new Date(); 
+    d.setDate(d.getDate() - (6 - i)); 
+    return { date: formatDate(d), score: allData[formatDate(d)] ? calcScore(allData[formatDate(d)]) : 0, label: d.getDate().toString() }; 
+  }), [allData]);
 
   const weeklyAvg = useMemo(() => {
     const weeks = [];
@@ -501,7 +567,11 @@ export default function CoachZen() {
     return weeks;
   }, [allData]);
 
-  const monthAvg = useMemo(() => { const scores = Object.entries(allData).slice(-30).map(([,d]) => calcScore(d)).filter(s => s > 0); return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0; }, [allData]);
+  const monthAvg = useMemo(() => { 
+    const entries = Object.entries(allData || {});
+    const scores = entries.slice(-30).map(([,d]) => calcScore(d)).filter(s => s > 0); 
+    return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0; 
+  }, [allData]);
 
   const selectedDateObj = new Date(selectedDate + 'T12:00:00');
 
@@ -549,35 +619,35 @@ export default function CoachZen() {
               <CircularProgress progress={score} size={100} />
             </div>
 
-            <KcalProgress consumed={totalKcal} target={tdee} ecarts={dayData.ecarts} />
+            <KcalProgress consumed={totalKcal} target={tdee || 2000} ecarts={dayData?.ecarts} />
 
-            {Object.entries(MEALS).map(([k, m]) => <HabitCard key={k} meal={m} checked={dayData.habits[k]} onChange={v => updateHabit(k, v)} />)}
+            {Object.entries(MEALS).map(([k, m]) => <HabitCard key={k} meal={m} checked={dayData?.habits?.[k] || false} onChange={v => updateHabit(k, v)} />)}
 
-            <EcartsSection ecarts={dayData.ecarts || { petit: 0, moyen: 0, gros: 0 }} onChange={e => setDayData(p => ({ ...p, ecarts: e }))} />
+            <EcartsSection ecarts={dayData?.ecarts || { petit: 0, moyen: 0, gros: 0 }} onChange={e => setDayData(p => ({ ...p, ecarts: e }))} />
 
             <div style={card}>
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 10 }}>⚡ Énergie</p>
-              <EnergySelector value={dayData.energy} onChange={v => setDayData(p => ({ ...p, energy: v }))} />
+              <EnergySelector value={dayData?.energy || 3} onChange={v => setDayData(p => ({ ...p, energy: v }))} />
             </div>
 
             <div style={card}>
-              <Slider value={dayData.sleep} onChange={v => setDayData(p => ({ ...p, sleep: v }))} min={0} max={9} step={0.5} label="Sommeil" unit="h" color="linear-gradient(to right, #818cf8, #ec4899)" icon="🌙" />
-              <Slider value={dayData.nap} onChange={v => setDayData(p => ({ ...p, nap: v }))} min={0} max={120} step={15} label="Sieste" unit="min" color="linear-gradient(to right, #f59e0b, #ef4444)" icon="☀️" />
+              <Slider value={dayData?.sleep || 7} onChange={v => setDayData(p => ({ ...p, sleep: v }))} min={0} max={9} step={0.5} label="Sommeil" unit="h" color="linear-gradient(to right, #818cf8, #ec4899)" icon="🌙" />
+              <Slider value={dayData?.nap || 0} onChange={v => setDayData(p => ({ ...p, nap: v }))} min={0} max={120} step={15} label="Sieste" unit="min" color="linear-gradient(to right, #f59e0b, #ef4444)" icon="☀️" />
             </div>
 
             <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginBottom: 8 }}>🏃 Activité (+5 pts)</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-              <button onClick={() => updateMovement('workout', !dayData.movement?.workout)} style={{ padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: dayData.movement?.workout ? 'linear-gradient(135deg, #ec4899, #f43f5e)' : 'rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <button onClick={() => updateMovement('workout', !dayData?.movement?.workout)} style={{ padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: dayData?.movement?.workout ? 'linear-gradient(135deg, #ec4899, #f43f5e)' : 'rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                 <span style={{ fontSize: 24 }}>🏋️</span>
-                <span style={{ color: dayData.movement?.workout ? 'white' : 'rgba(255,255,255,0.5)', fontSize: 12 }}>Muscu</span>
+                <span style={{ color: dayData?.movement?.workout ? 'white' : 'rgba(255,255,255,0.5)', fontSize: 12 }}>Muscu</span>
               </button>
-              <button onClick={() => updateMovement('run', !dayData.movement?.run)} style={{ padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: dayData.movement?.run ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 'rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <button onClick={() => updateMovement('run', !dayData?.movement?.run)} style={{ padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: dayData?.movement?.run ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 'rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                 <span style={{ fontSize: 24 }}>🏃</span>
-                <span style={{ color: dayData.movement?.run ? 'white' : 'rgba(255,255,255,0.5)', fontSize: 12 }}>Course</span>
+                <span style={{ color: dayData?.movement?.run ? 'white' : 'rgba(255,255,255,0.5)', fontSize: 12 }}>Course</span>
               </button>
-              <button onClick={() => updateMovement('walk', !dayData.movement?.walk)} style={{ padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: dayData.movement?.walk ? 'linear-gradient(135deg, #06b6d4, #3b82f6)' : 'rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <button onClick={() => updateMovement('walk', !dayData?.movement?.walk)} style={{ padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: dayData?.movement?.walk ? 'linear-gradient(135deg, #06b6d4, #3b82f6)' : 'rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                 <span style={{ fontSize: 24 }}>🚶</span>
-                <span style={{ color: dayData.movement?.walk ? 'white' : 'rgba(255,255,255,0.5)', fontSize: 12 }}>Marche</span>
+                <span style={{ color: dayData?.movement?.walk ? 'white' : 'rgba(255,255,255,0.5)', fontSize: 12 }}>Marche</span>
               </button>
             </div>
           </>
@@ -608,7 +678,7 @@ export default function CoachZen() {
         {tab === 'plan' && (
           <>
             <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 14, background: 'linear-gradient(to right, #fbbf24, #f97316)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Mon Plan</h1>
-            <div style={{ ...card, background: 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(236,72,153,0.1))' }}><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, margin: 0 }}>Total: <strong style={{ color: '#10b981' }}>{Object.values(MEALS).reduce((s,m) => s + m.kcal, 0)} kcal</strong> • TDEE: <strong style={{ color: '#06b6d4' }}>{tdee} kcal</strong></p></div>
+            <div style={{ ...card, background: 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(236,72,153,0.1))' }}><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, margin: 0 }}>Total: <strong style={{ color: '#10b981' }}>{Object.values(MEALS).reduce((s,m) => s + m.kcal, 0)} kcal</strong> • TDEE: <strong style={{ color: '#06b6d4' }}>{tdee || 2000} kcal</strong></p></div>
             {Object.entries(MEALS).map(([k, m]) => (
               <div key={k} style={{ background: `linear-gradient(135deg, ${m.colors[0]}, ${m.colors[1]})`, borderRadius: 16, padding: 14, marginBottom: 10 }}>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -628,7 +698,7 @@ export default function CoachZen() {
             <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 14, background: 'linear-gradient(to right, #10b981, #14b8a6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Stats & Profil</h1>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
-              <div style={{ background: 'linear-gradient(135deg, #10b981, #14b8a6)', borderRadius: 14, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 26, fontWeight: 'bold', margin: 0 }}>{Object.keys(allData).length}</p><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>jours</p></div>
+              <div style={{ background: 'linear-gradient(135deg, #10b981, #14b8a6)', borderRadius: 14, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 26, fontWeight: 'bold', margin: 0 }}>{Object.keys(allData || {}).length}</p><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>jours</p></div>
               <div style={{ background: 'linear-gradient(135deg, #8b5cf6, #a855f7)', borderRadius: 14, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 26, fontWeight: 'bold', margin: 0 }}>{streak}</p><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>🔥 streak</p></div>
               <div style={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: 14, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 26, fontWeight: 'bold', margin: 0 }}>{monthAvg}</p><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>moy</p></div>
             </div>
@@ -658,19 +728,19 @@ export default function CoachZen() {
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1))', border: '1px solid rgba(6,182,212,0.2)' }}>
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginBottom: 10, fontWeight: 'bold' }}>⚙️ PROFIL</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <ProfileInput label="Poids (kg)" value={profile.poids} onChange={v => updateProfile('poids', v)} />
-                <ProfileInput label="Taille (cm)" value={profile.taille} onChange={v => updateProfile('taille', v)} />
-                <ProfileInput label="Âge" value={profile.age} onChange={v => updateProfile('age', v)} />
-                <ProfileInput label="Sexe" value={profile.sexe} onChange={v => updateProfile('sexe', v)} options={[{ value: 'homme', label: 'Homme' }, { value: 'femme', label: 'Femme' }]} />
+                <ProfileInput label="Poids (kg)" value={profile?.poids} onChange={v => updateProfile('poids', v)} />
+                <ProfileInput label="Taille (cm)" value={profile?.taille} onChange={v => updateProfile('taille', v)} />
+                <ProfileInput label="Âge" value={profile?.age} onChange={v => updateProfile('age', v)} />
+                <ProfileInput label="Sexe" value={profile?.sexe} onChange={v => updateProfile('sexe', v)} options={[{ value: 'homme', label: 'Homme' }, { value: 'femme', label: 'Femme' }]} />
               </div>
-              <ProfileInput label="Activité" value={profile.activite} onChange={v => updateProfile('activite', v)} options={[{ value: 'sedentaire', label: 'Sédentaire' }, { value: 'leger', label: 'Léger' }, { value: 'modere', label: 'Modéré' }, { value: 'actif', label: 'Actif' }, { value: 'intense', label: 'Intense' }]} />
+              <ProfileInput label="Activité" value={profile?.activite} onChange={v => updateProfile('activite', v)} options={[{ value: 'sedentaire', label: 'Sédentaire' }, { value: 'leger', label: 'Léger' }, { value: 'modere', label: 'Modéré' }, { value: 'actif', label: 'Actif' }, { value: 'intense', label: 'Intense' }]} />
             </div>
 
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(236,72,153,0.1))' }}>
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginBottom: 10, fontWeight: 'bold' }}>🔥 MÉTABOLISME</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 24, fontWeight: 'bold', margin: 0, color: '#a78bfa' }}>{bmr}</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0' }}>BMR</p></div>
-                <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 24, fontWeight: 'bold', margin: 0, color: '#10b981' }}>{tdee}</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0' }}>TDEE</p></div>
+                <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 24, fontWeight: 'bold', margin: 0, color: '#a78bfa' }}>{bmr || 0}</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0' }}>BMR</p></div>
+                <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 24, fontWeight: 'bold', margin: 0, color: '#10b981' }}>{tdee || 0}</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0' }}>TDEE</p></div>
               </div>
             </div>
           </>
@@ -686,7 +756,7 @@ export default function CoachZen() {
         ))}
       </nav>
 
-      <WeightModal isOpen={showWeightModal} onClose={() => setShowWeightModal(false)} onSave={saveWeight} currentWeight={profile.poids} />
+      <WeightModal isOpen={showWeightModal} onClose={() => setShowWeightModal(false)} onSave={saveWeight} currentWeight={profile?.poids || 75} />
       <AnalysisModal isOpen={showAnalysis} onClose={() => setShowAnalysis(false)} analysis={analysis} loading={analysisLoading} period={analysisPeriod} onChangePeriod={fetchAnalysis} />
     </div>
   );
