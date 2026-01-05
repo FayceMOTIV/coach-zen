@@ -1,20 +1,21 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
-const client = new Anthropic();
+const openai = new OpenAI();
 
 export async function POST(request) {
   try {
     const { description } = await request.json();
 
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 500,
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
       messages: [
         {
+          role: "system",
+          content: `Tu es un nutritionniste expert. Analyse les repas et réponds UNIQUEMENT en JSON valide, sans texte avant ou après.`
+        },
+        {
           role: "user",
-          content: `Tu es un nutritionniste expert. Analyse ce repas et réponds UNIQUEMENT en JSON valide, sans texte avant ou après.
-
-REPAS: "${description}"
+          content: `Analyse ce repas: "${description}"
 
 Réponds avec ce format JSON exact:
 {
@@ -36,7 +37,7 @@ JSON uniquement:`
       ]
     });
 
-    const text = message.content[0].text.trim();
+    const text = completion.choices[0].message.content.trim();
     
     let result;
     try {
