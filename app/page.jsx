@@ -1,17 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { saveToFirebase, loadFromFirebase } from '../lib/firebase';
 
 const formatDate = (d) => d.toISOString().split('T')[0];
 const getDayName = (d) => ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'][d.getDay()];
 const getMonthName = (d) => ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][d.getMonth()];
 
-const loadData = (k, def) => { 
+const loadLocal = (k, def) => { 
   if (typeof window === 'undefined') return def;
   try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : def; } catch { return def; }
 };
-
-const saveData = (k, v) => {
+const saveLocal = (k, v) => {
   if (typeof window === 'undefined') return;
   try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.error('Save error:', e); }
 };
@@ -78,6 +78,7 @@ const ECARTS = [
 
 export default function CoachZen() {
   const [mounted, setMounted] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [allData, setAllData] = useState({});
   const [tab, setTab] = useState('today');
@@ -96,47 +97,82 @@ export default function CoachZen() {
   const [foodLoading, setFoodLoading] = useState(false);
   const [foodResult, setFoodResult] = useState(null);
 
-  const realToday = useMemo(() => { try { return formatDate(new Date()); } catch { return '2025-01-05'; } }, []);
+  const realToday = useMemo(() => formatDate(new Date()), []);
   const isToday = selectedDate === realToday;
 
   useEffect(() => {
-    const today = formatDate(new Date());
-    setSelectedDate(today);
-    const saved = loadData('cz_data', {});
-    const savedProfile = loadData('cz_profile', getDefaultProfile());
-    const savedWeight = loadData('cz_weight', []);
-    setAllData(saved || {});
-    setProfile(savedProfile || getDefaultProfile());
-    setWeightHistory(Array.isArray(savedWeight) ? savedWeight : []);
-    setDayData((saved && saved[today]) ? saved[today] : getDefaultDay());
-    setMounted(true);
-    fetch('/api/coach/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ energy: 3, score: 0, slot: 'morning' }) })
-      .then(r => r.json()).then(d => setCoachMessage(d.message || "Le plan commence.")).catch(() => setCoachMessage("Le plan commence."));
+    const loadAllData = async () => {
+      const today = formatDate(new Date());
+      setSelectedDate(today);
+      
+      const localData = loadLocal('cz_data', {});
+      const localProfile = loadLocal('cz_profile', getDefaultProfile());
+      const localWeight = loadLocal('cz_weight', []);
+      
+      setAllData(localData);
+      setProfile(localProfile);
+      setWeightHistory(Array.isArray(localWeight) ? localWeight : []);
+      setDayData(localData[today] || getDefaultDay());
+      setMounted(true);
+      
+      try {
+        setSyncing(true);
+        const [fbData, fbProfile, fbWeight] = await Promise.all([
+          loadFromFirebase('allData', localData),
+          loadFromFirebase('profile', localProfile),
+          loadFromFirebase('weightHistory', localWeight)
+        ]);
+        
+        setAllData(fbData || localData);
+        setProfile(fbProfile || localProfile);
+        setWeightHistory(Array.isArray(fbWeight) ? fbWeight : localWeight);
+        setDayData((fbData && fbData[today]) ? fbData[today] : getDefaultDay());
+        
+        saveLocal('cz_data', fbData || localData);
+        saveLocal('cz_profile', fbProfile || localProfile);
+        saveLocal('cz_weight', fbWeight || localWeight);
+        setSyncing(false);
+      } catch (e) {
+        console.error('Firebase load error:', e);
+        setSyncing(false);
+      }
+      
+      fetch('/api/coach/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ energy: 3, score: 0, slot: 'morning' }) })
+        .then(r => r.json()).then(d => setCoachMessage(d.message || "Le plan commence.")).catch(() => setCoachMessage("Le plan commence."));
+    };
+    loadAllData();
   }, []);
 
   useEffect(() => { 
     if (mounted && selectedDate) {
-      const data = allData[selectedDate];
-      if (data) {
-        setDayData(data);
-      } else {
-        setDayData(getDefaultDay());
-      }
+      setDayData(allData[selectedDate] || getDefaultDay());
     }
-  }, [selectedDate, mounted]);
+  }, [selectedDate, mounted, allData]);
 
   useEffect(() => { 
     if (!mounted || !selectedDate) return;
     const timer = setTimeout(() => {
       const newAll = { ...allData, [selectedDate]: dayData };
       setAllData(newAll);
-      saveData('cz_data', newAll);
-    }, 100);
+      saveLocal('cz_data', newAll);
+      saveToFirebase('allData', newAll);
+    }, 500);
     return () => clearTimeout(timer);
   }, [dayData, mounted, selectedDate]);
 
-  useEffect(() => { if (mounted) saveData('cz_profile', profile); }, [profile, mounted]);
-  useEffect(() => { if (mounted) saveData('cz_weight', weightHistory); }, [weightHistory, mounted]);
+  useEffect(() => { 
+    if (mounted) {
+      saveLocal('cz_profile', profile);
+      saveToFirebase('profile', profile);
+    }
+  }, [profile, mounted]);
+  
+  useEffect(() => { 
+    if (mounted) {
+      saveLocal('cz_weight', weightHistory);
+      saveToFirebase('weightHistory', weightHistory);
+    }
+  }, [weightHistory, mounted]);
 
   const saveWeight = useCallback((w) => { 
     const today = formatDate(new Date()); 
@@ -171,9 +207,7 @@ export default function CoachZen() {
   }, [allData, profile, weightHistory]);
 
   const score = calcScore(dayData);
-  const planKcal = useMemo(() => {
-    return Object.entries(MEALS).reduce((s, [k, m]) => (dayData?.habits?.[k]) ? s + m.kcal : s, 0);
-  }, [dayData?.habits]);
+  const planKcal = useMemo(() => Object.entries(MEALS).reduce((s, [k, m]) => (dayData?.habits?.[k]) ? s + m.kcal : s, 0), [dayData?.habits]);
   const customKcal = getCustomMealsKcal(dayData.customMeals);
   const ecartsKcal = getEcartsKcal(dayData.ecarts);
   const totalKcal = planKcal + customKcal + ecartsKcal;
@@ -183,7 +217,6 @@ export default function CoachZen() {
   const updateHabit = useCallback((k, v) => {
     setDayData(p => {
       const newHabits = { ...(p.habits || {}), [k]: v };
-      // Si on active breakfast, on désactive fasting et vice versa
       if (k === 'breakfast' && v) newHabits.fasting = false;
       if (k === 'fasting' && v) newHabits.breakfast = false;
       return { ...p, habits: newHabits };
@@ -197,10 +230,7 @@ export default function CoachZen() {
   const last7Days = useMemo(() => { const days = []; for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const k = formatDate(d); days.push({ date: k, score: allData?.[k] ? calcScore(allData[k]) : 0, label: d.getDate().toString() }); } return days; }, [allData]);
   const monthAvg = useMemo(() => { const vals = Object.values(allData || {}); const scores = vals.slice(-30).map(d => calcScore(d)).filter(s => s > 0); return scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0; }, [allData]);
   const totalDays = useMemo(() => Object.keys(allData || {}).length, [allData]);
-
-  const selectedDateObj = useMemo(() => {
-    try { return selectedDate ? new Date(selectedDate + 'T12:00:00') : new Date(); } catch { return new Date(); }
-  }, [selectedDate]);
+  const selectedDateObj = useMemo(() => selectedDate ? new Date(selectedDate + 'T12:00:00') : new Date(), [selectedDate]);
 
   const container = { minHeight: '100dvh', background: '#0f172a', color: 'white', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', paddingBottom: 90 };
   const content = { maxWidth: 500, margin: '0 auto', padding: '12px 16px 20px' };
@@ -215,6 +245,7 @@ export default function CoachZen() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 16 }}>🌿</span></div>
             <span style={{ fontSize: 18, fontWeight: 'bold', background: 'linear-gradient(to right, #c4b5fd, #f9a8d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Coach Zen</span>
+            {syncing && <span style={{ fontSize: 10, color: '#22c55e' }}>☁️</span>}
           </div>
           <button onClick={() => { setShowAnalysis(true); fetchAnalysis('week'); }} style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', border: 'none', borderRadius: 10, padding: '8px 14px', cursor: 'pointer' }}><span style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>🤖 Analyse</span></button>
         </header>
@@ -251,7 +282,6 @@ export default function CoachZen() {
               <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: '8px 0 0', textAlign: 'center' }}>{(tdee - totalKcal) > 0 ? `📉 Déficit: −${tdee - totalKcal} kcal` : `📈 Surplus: +${Math.abs(tdee - totalKcal)} kcal`}</p>
             </div>
 
-            {/* Petit-déj + Jeûne sur la même ligne */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
               <button onClick={() => updateHabit('breakfast', !dayData?.habits?.breakfast)} style={{ flex: 1, padding: 2, borderRadius: 14, background: `linear-gradient(135deg, ${MEALS.breakfast.colors[0]}, ${MEALS.breakfast.colors[1]})`, border: 'none', cursor: 'pointer' }}>
                 <div style={{ background: dayData?.habits?.breakfast ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.95)', borderRadius: 12, padding: 10 }}>
@@ -273,7 +303,6 @@ export default function CoachZen() {
               </button>
             </div>
 
-            {/* Autres repas */}
             {Object.entries(MEALS).filter(([k]) => k !== 'breakfast' && k !== 'fasting').map(([k, m]) => {
               const checked = dayData?.habits?.[k];
               return (
@@ -289,7 +318,6 @@ export default function CoachZen() {
               );
             })}
 
-            {/* REPAS LIBRES */}
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(34,197,94,0.1), rgba(16,185,129,0.1))', border: '1px solid rgba(34,197,94,0.2)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <div><p style={{ fontSize: 14, fontWeight: 'bold', color: 'white', margin: 0 }}>🥗 Repas libres</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>Analysé par IA</p></div>
@@ -315,7 +343,6 @@ export default function CoachZen() {
               )}
             </div>
 
-            {/* ECARTS */}
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(249,115,22,0.1))', border: '1px solid rgba(239,68,68,0.2)' }}>
               <p style={{ fontSize: 14, fontWeight: 'bold', color: 'white', margin: '0 0 12px' }}>🍔 Écarts (-10 pts)</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
@@ -336,7 +363,6 @@ export default function CoachZen() {
               </div>
             </div>
 
-            {/* ENERGY */}
             <div style={card}>
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 10 }}>⚡ Énergie</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
@@ -346,7 +372,6 @@ export default function CoachZen() {
               </div>
             </div>
 
-            {/* SLEEP */}
             <div style={card}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ color: 'rgba(255,255,255,0.6)' }}>🌙 Sommeil</span><span style={{ fontWeight: 'bold' }}>{dayData.sleep || 7}h</span></div>
               <input type="range" min={0} max={9} step={0.5} value={dayData.sleep || 7} onChange={e => setDayData(p => ({ ...p, sleep: Number(e.target.value) }))} style={{ width: '100%' }} />
@@ -354,7 +379,6 @@ export default function CoachZen() {
               <input type="range" min={0} max={120} step={15} value={dayData.nap || 0} onChange={e => setDayData(p => ({ ...p, nap: Number(e.target.value) }))} style={{ width: '100%' }} />
             </div>
 
-            {/* MOVEMENT */}
             <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginBottom: 8 }}>🏃 Activité (+5 pts)</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
               {[{ key: 'workout', emoji: '🏋️', label: 'Muscu', color: '#ec4899' }, { key: 'run', emoji: '🏃', label: 'Course', color: '#f59e0b' }, { key: 'walk', emoji: '🚶', label: 'Marche', color: '#06b6d4' }].map(m => {
@@ -396,35 +420,20 @@ export default function CoachZen() {
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                   <div style={{ width: 50, height: 50, borderRadius: 12, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 26 }}>{m.emoji}</span></div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <p style={{ fontSize: 16, fontWeight: 'bold', margin: 0 }}>{m.title}</p>
-                      <span style={{ fontSize: 12, background: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: 8 }}>{m.kcal} kcal</span>
-                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><p style={{ fontSize: 16, fontWeight: 'bold', margin: 0 }}>{m.title}</p><span style={{ fontSize: 12, background: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: 8 }}>{m.kcal} kcal</span></div>
                     <p style={{ fontSize: 11, margin: '4px 0 0', opacity: 0.8 }}>{m.time}</p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                      {m.items.map((item, i) => (
-                        <span key={i} style={{ fontSize: 10, background: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: 6 }}>{item}</span>
-                      ))}
-                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>{m.items.map((item, i) => (<span key={i} style={{ fontSize: 10, background: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: 6 }}>{item}</span>))}</div>
                   </div>
                 </div>
               </div>
             ))}
-            {/* Jeûne séparé */}
             <div style={{ background: `linear-gradient(135deg, ${MEALS.fasting.colors[0]}, ${MEALS.fasting.colors[1]})`, borderRadius: 16, padding: 14, marginBottom: 10 }}>
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 <div style={{ width: 50, height: 50, borderRadius: 12, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 26 }}>{MEALS.fasting.emoji}</span></div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <p style={{ fontSize: 16, fontWeight: 'bold', margin: 0 }}>Jeûne Intermittent</p>
-                    <span style={{ fontSize: 12, background: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: 8 }}>0 kcal</span>
-                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><p style={{ fontSize: 16, fontWeight: 'bold', margin: 0 }}>Jeûne Intermittent</p><span style={{ fontSize: 12, background: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: 8 }}>0 kcal</span></div>
                   <p style={{ fontSize: 11, margin: '4px 0 0', opacity: 0.8 }}>Alternative au petit-déjeuner</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                    {MEALS.fasting.items.map((item, i) => (
-                      <span key={i} style={{ fontSize: 10, background: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: 6 }}>{item}</span>
-                    ))}
-                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>{MEALS.fasting.items.map((item, i) => (<span key={i} style={{ fontSize: 10, background: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: 6 }}>{item}</span>))}</div>
                 </div>
               </div>
             </div>
