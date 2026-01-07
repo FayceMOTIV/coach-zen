@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { saveToFirebase, loadFromFirebase } from '../lib/firebase';
 
 const formatDate = (d) => d.toISOString().split('T')[0];
@@ -21,10 +21,11 @@ const getDefaultDay = () => ({
   sleep: 7, nap: 0, energy: 3, 
   movement: { workout: false, walk: false, run: false }, 
   ecarts: { petit: 0, moyen: 0, gros: 0 },
-  customMeals: []
+  customMeals: [],
+  water: 0
 });
 
-const getDefaultProfile = () => ({ poids: 75, taille: 175, age: 30, sexe: 'homme', activite: 'modere' });
+const getDefaultProfile = () => ({ poids: 75, taille: 175, age: 30, sexe: 'homme', activite: 'modere', objectifPoids: 70 });
 
 const getEcartsCount = (e) => !e ? 0 : (e.petit || 0) + (e.moyen || 0) + (e.gros || 0);
 const getEcartsKcal = (e) => !e ? 0 : ((e.petit || 0) * 300) + ((e.moyen || 0) * 600) + ((e.gros || 0) * 1000);
@@ -46,6 +47,7 @@ const calcScore = (d) => {
   if (d.sleep >= 6.5) s += 10; 
   if (d.nap >= 60) s += 5; 
   if (d.movement) { if (d.movement.workout) s += 5; if (d.movement.walk) s += 5; if (d.movement.run) s += 5; }
+  if ((d.water || 0) >= 8) s += 10;
   s -= getEcartsCount(d.ecarts) * 10;
   return Math.max(0, Math.min(s, 100)); 
 };
@@ -96,6 +98,11 @@ export default function CoachZen() {
   const [foodDescription, setFoodDescription] = useState('');
   const [foodLoading, setFoodLoading] = useState(false);
   const [foodResult, setFoodResult] = useState(null);
+  const [showVoiceCoach, setShowVoiceCoach] = useState(false);
+  const [voiceMessages, setVoiceMessages] = useState([]);
+  const [voiceInput, setVoiceInput] = useState('');
+  const [voiceLoading, setVoiceLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
 
   const realToday = useMemo(() => formatDate(new Date()), []);
   const isToday = selectedDate === realToday;
@@ -206,6 +213,65 @@ export default function CoachZen() {
     setAnalysisLoading(false);
   }, [allData, profile, weightHistory]);
 
+  // Voice Coach
+  const sendVoiceMessage = useCallback(async (text) => {
+    if (!text.trim()) return;
+    const userMsg = { role: 'user', content: text };
+    setVoiceMessages(prev => [...prev, userMsg]);
+    setVoiceInput('');
+    setVoiceLoading(true);
+    
+    try {
+      const res = await fetch('/api/coach/voice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          message: text, 
+          allData, 
+          profile, 
+          weightHistory,
+          history: voiceMessages.slice(-10)
+        })
+      });
+      const data = await res.json();
+      setVoiceMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
+      
+      // Text-to-speech
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(data.response);
+        utterance.lang = 'fr-FR';
+        utterance.rate = 1;
+        speechSynthesis.speak(utterance);
+      }
+    } catch (e) {
+      setVoiceMessages(prev => [...prev, { role: 'assistant', content: "Désolé, je n'ai pas pu répondre." }]);
+    }
+    setVoiceLoading(false);
+  }, [allData, profile, weightHistory, voiceMessages]);
+
+  const startListening = useCallback(() => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert('La reconnaissance vocale n\'est pas supportée sur ce navigateur.');
+      return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'fr-FR';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      sendVoiceMessage(transcript);
+    };
+    recognition.onerror = () => setIsListening(false);
+    
+    recognition.start();
+  }, [sendVoiceMessage]);
+
+  // Calculs
   const score = calcScore(dayData);
   const planKcal = useMemo(() => Object.entries(MEALS).reduce((s, [k, m]) => (dayData?.habits?.[k]) ? s + m.kcal : s, 0), [dayData?.habits]);
   const customKcal = getCustomMealsKcal(dayData.customMeals);
@@ -213,6 +279,37 @@ export default function CoachZen() {
   const totalKcal = planKcal + customKcal + ecartsKcal;
   const bmr = calcBMR(profile);
   const tdee = calcTDEE(bmr, profile?.activite);
+
+  // Prédiction poids
+  const prediction = useMemo(() => {
+    if (!weightHistory.length || !profile.objectifPoids) return null;
+    const sorted = [...weightHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (sorted.length < 2) return null;
+    
+    const recent = sorted.slice(-14);
+    const first = recent[0];
+    const last = recent[recent.length - 1];
+    const daysDiff = (new Date(last.date) - new Date(first.date)) / (1000 * 60 * 60 * 24);
+    if (daysDiff < 7) return null;
+    
+    const weightLoss = first.weight - last.weight;
+    const lossPerDay = weightLoss / daysDiff;
+    
+    if (lossPerDay <= 0) return { message: "Tu es en phase de maintien ou prise de poids", date: null };
+    
+    const remaining = last.weight - profile.objectifPoids;
+    if (remaining <= 0) return { message: "🎉 Objectif atteint !", date: null };
+    
+    const daysToGoal = Math.ceil(remaining / lossPerDay);
+    const goalDate = new Date();
+    goalDate.setDate(goalDate.getDate() + daysToGoal);
+    
+    return {
+      message: `À ce rythme (${(lossPerDay * 7).toFixed(1)} kg/sem)`,
+      date: goalDate,
+      lossPerWeek: (lossPerDay * 7).toFixed(1)
+    };
+  }, [weightHistory, profile.objectifPoids]);
 
   const updateHabit = useCallback((k, v) => {
     setDayData(p => {
@@ -232,6 +329,18 @@ export default function CoachZen() {
   const totalDays = useMemo(() => Object.keys(allData || {}).length, [allData]);
   const selectedDateObj = useMemo(() => selectedDate ? new Date(selectedDate + 'T12:00:00') : new Date(), [selectedDate]);
 
+  // Graphique poids
+  const weightChartData = useMemo(() => {
+    const sorted = [...weightHistory].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(-30);
+    if (!sorted.length) return [];
+    const min = Math.min(...sorted.map(w => w.weight)) - 2;
+    const max = Math.max(...sorted.map(w => w.weight)) + 2;
+    return sorted.map(w => ({
+      ...w,
+      percent: ((w.weight - min) / (max - min)) * 100
+    }));
+  }, [weightHistory]);
+
   const container = { minHeight: '100dvh', background: '#0f172a', color: 'white', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', paddingBottom: 90 };
   const content = { maxWidth: 500, margin: '0 auto', padding: '12px 16px 20px' };
   const card = { background: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 14, marginBottom: 12, border: '1px solid rgba(255,255,255,0.1)' };
@@ -247,7 +356,10 @@ export default function CoachZen() {
             <span style={{ fontSize: 18, fontWeight: 'bold', background: 'linear-gradient(to right, #c4b5fd, #f9a8d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Coach Zen</span>
             {syncing && <span style={{ fontSize: 10, color: '#22c55e' }}>☁️</span>}
           </div>
-          <button onClick={() => { setShowAnalysis(true); fetchAnalysis('week'); }} style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', border: 'none', borderRadius: 10, padding: '8px 14px', cursor: 'pointer' }}><span style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>🤖 Analyse</span></button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setShowVoiceCoach(true)} style={{ background: 'linear-gradient(135deg, #06b6d4, #0891b2)', border: 'none', borderRadius: 10, padding: '8px 12px', cursor: 'pointer' }}><span style={{ color: 'white', fontSize: 14 }}>🎙️</span></button>
+            <button onClick={() => { setShowAnalysis(true); fetchAnalysis('week'); }} style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', border: 'none', borderRadius: 10, padding: '8px 12px', cursor: 'pointer' }}><span style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>🤖</span></button>
+          </div>
         </header>
 
         {tab === 'today' && (
@@ -280,6 +392,21 @@ export default function CoachZen() {
               <div style={{ height: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' }}><div style={{ height: '100%', background: totalKcal > tdee ? '#ef4444' : '#10b981', width: `${Math.min((totalKcal / tdee) * 100, 100)}%` }} /></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}><span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Plan: {planKcal} {customKcal > 0 && <span style={{ color: '#22c55e' }}>+ {customKcal} libre</span>} {ecartsKcal > 0 && <span style={{ color: '#f97316' }}>+ {ecartsKcal} écarts</span>}</span></div>
               <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: '8px 0 0', textAlign: 'center' }}>{(tdee - totalKcal) > 0 ? `📉 Déficit: −${tdee - totalKcal} kcal` : `📈 Surplus: +${Math.abs(tdee - totalKcal)} kcal`}</p>
+            </div>
+
+            {/* HYDRATATION */}
+            <div style={{ ...card, background: 'linear-gradient(135deg, rgba(6,182,212,0.1), rgba(8,145,178,0.1))', border: '1px solid rgba(6,182,212,0.2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div><p style={{ fontSize: 14, fontWeight: 'bold', color: 'white', margin: 0 }}>💧 Hydratation</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>+10 pts si ≥ 8 verres</p></div>
+                <span style={{ fontSize: 18, fontWeight: 'bold', color: (dayData.water || 0) >= 8 ? '#22c55e' : 'white' }}>{dayData.water || 0}/8</span>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {[...Array(8)].map((_, i) => (
+                  <button key={i} onClick={() => setDayData(p => ({ ...p, water: i + 1 }))} style={{ width: 36, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer', background: i < (dayData.water || 0) ? '#06b6d4' : 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: 16 }}>{i < (dayData.water || 0) ? '💧' : '○'}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
@@ -448,18 +575,67 @@ export default function CoachZen() {
               <div style={{ background: '#8b5cf6', borderRadius: 14, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 26, fontWeight: 'bold', margin: 0 }}>{streak}</p><p style={{ fontSize: 11, margin: 0, opacity: 0.8 }}>🔥 streak</p></div>
               <div style={{ background: '#f59e0b', borderRadius: 14, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 26, fontWeight: 'bold', margin: 0 }}>{monthAvg}</p><p style={{ fontSize: 11, margin: 0, opacity: 0.8 }}>moy</p></div>
             </div>
+
+            {/* OBJECTIF POIDS + PRÉDICTION */}
+            <div style={{ ...card, background: 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(236,72,153,0.1))', border: '1px solid rgba(139,92,246,0.2)' }}>
+              <p style={{ fontSize: 12, fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>🎯 OBJECTIF POIDS</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '0 0 4px' }}>Actuel</p>
+                  <p style={{ fontSize: 28, fontWeight: 'bold', margin: 0, color: 'white' }}>{profile.poids} kg</p>
+                </div>
+                <div style={{ fontSize: 24, color: 'rgba(255,255,255,0.3)' }}>→</div>
+                <div style={{ flex: 1, textAlign: 'right' }}>
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '0 0 4px' }}>Objectif</p>
+                  <p style={{ fontSize: 28, fontWeight: 'bold', margin: 0, color: '#22c55e' }}>{profile.objectifPoids} kg</p>
+                </div>
+              </div>
+              <div style={{ height: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden', marginBottom: 12 }}>
+                <div style={{ height: '100%', background: 'linear-gradient(90deg, #8b5cf6, #22c55e)', width: `${Math.min(100, Math.max(0, ((profile.poids - profile.objectifPoids) / (weightHistory[0]?.weight || profile.poids + 10 - profile.objectifPoids)) * 100))}%` }} />
+              </div>
+              {prediction && (
+                <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: 12 }}>
+                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', margin: 0 }}>📈 {prediction.message}</p>
+                  {prediction.date && <p style={{ fontSize: 16, fontWeight: 'bold', color: '#22c55e', margin: '4px 0 0' }}>🎯 Objectif le {prediction.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>}
+                </div>
+              )}
+            </div>
+
+            {/* GRAPHIQUE POIDS */}
+            <div style={card}>
+              <p style={{ fontSize: 12, fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>📊 ÉVOLUTION POIDS</p>
+              {weightChartData.length > 1 ? (
+                <div style={{ height: 120, display: 'flex', alignItems: 'flex-end', gap: 2, paddingTop: 20, position: 'relative' }}>
+                  {/* Ligne objectif */}
+                  <div style={{ position: 'absolute', top: 10, left: 0, right: 0, borderBottom: '2px dashed rgba(34,197,94,0.5)', zIndex: 1 }}>
+                    <span style={{ position: 'absolute', right: 0, top: -16, fontSize: 10, color: '#22c55e' }}>{profile.objectifPoids} kg</span>
+                  </div>
+                  {weightChartData.map((w, i) => (
+                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.5)' }}>{w.weight}</span>
+                      <div style={{ width: '100%', height: `${w.percent}%`, minHeight: 4, background: w.weight <= profile.objectifPoids ? '#22c55e' : 'linear-gradient(180deg, #8b5cf6, #ec4899)', borderRadius: 2 }} />
+                      <span style={{ fontSize: 8, color: 'rgba(255,255,255,0.3)' }}>{new Date(w.date).getDate()}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, textAlign: 'center', margin: '20px 0' }}>Pas assez de pesées pour afficher le graphique</p>
+              )}
+            </div>
+
             <div style={card}><p style={{ fontSize: 12, fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>⚖️ POIDS</p>{weightHistory.length > 0 ? <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontSize: 24, fontWeight: 'bold' }}>{weightHistory[weightHistory.length - 1].weight} kg</span><span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{weightHistory.length} pesée(s)</span></div> : <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: 0 }}>Aucune pesée</p>}</div>
             <button onClick={() => { setModalWeight(profile.poids || 75); setShowWeightModal(true); }} style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: '#06b6d4', marginBottom: 14 }}><span style={{ color: 'white', fontSize: 14, fontWeight: 'bold' }}>⚖️ Enregistrer mon poids</span></button>
-            <div style={card}><p style={{ fontSize: 12, fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>📈 7 DERNIERS JOURS</p><div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 60 }}>{last7Days.map((d, i) => <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}><div style={{ width: '100%', height: Math.max(4, d.score * 0.5), background: d.score >= 80 ? '#10b981' : d.score >= 50 ? '#f59e0b' : d.score > 0 ? '#ef4444' : 'rgba(255,255,255,0.1)', borderRadius: 4 }} /><span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>{d.label}</span></div>)}</div></div>
+            
             <div style={card}>
               <p style={{ fontSize: 12, fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>⚙️ PROFIL</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div><label style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Poids</label><input type="number" value={profile.poids || 75} onChange={e => setProfile(p => ({ ...p, poids: Number(e.target.value) || 75 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', marginTop: 4, boxSizing: 'border-box' }} /></div>
+                <div><label style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Poids actuel</label><input type="number" value={profile.poids || 75} onChange={e => setProfile(p => ({ ...p, poids: Number(e.target.value) || 75 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', marginTop: 4, boxSizing: 'border-box' }} /></div>
+                <div><label style={{ fontSize: 11, color: '#22c55e' }}>🎯 Objectif</label><input type="number" value={profile.objectifPoids || 70} onChange={e => setProfile(p => ({ ...p, objectifPoids: Number(e.target.value) || 70 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(34,197,94,0.2)', color: '#22c55e', marginTop: 4, boxSizing: 'border-box' }} /></div>
                 <div><label style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Taille</label><input type="number" value={profile.taille || 175} onChange={e => setProfile(p => ({ ...p, taille: Number(e.target.value) || 175 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', marginTop: 4, boxSizing: 'border-box' }} /></div>
                 <div><label style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Âge</label><input type="number" value={profile.age || 30} onChange={e => setProfile(p => ({ ...p, age: Number(e.target.value) || 30 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', marginTop: 4, boxSizing: 'border-box' }} /></div>
                 <div><label style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Sexe</label><select value={profile.sexe || 'homme'} onChange={e => setProfile(p => ({ ...p, sexe: e.target.value }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', marginTop: 4 }}><option value="homme">Homme</option><option value="femme">Femme</option></select></div>
+                <div><label style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Activité</label><select value={profile.activite || 'modere'} onChange={e => setProfile(p => ({ ...p, activite: e.target.value }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', marginTop: 4 }}><option value="sedentaire">Sédentaire</option><option value="leger">Léger</option><option value="modere">Modéré</option><option value="actif">Actif</option><option value="intense">Intense</option></select></div>
               </div>
-              <div style={{ marginTop: 10 }}><label style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Activité</label><select value={profile.activite || 'modere'} onChange={e => setProfile(p => ({ ...p, activite: e.target.value }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', marginTop: 4 }}><option value="sedentaire">Sédentaire</option><option value="leger">Léger</option><option value="modere">Modéré</option><option value="actif">Actif</option><option value="intense">Intense</option></select></div>
             </div>
             <div style={card}><p style={{ fontSize: 12, fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>🔥 MÉTABOLISME</p><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}><div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 24, fontWeight: 'bold', margin: 0, color: '#a78bfa' }}>{bmr}</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>BMR</p></div><div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 24, fontWeight: 'bold', margin: 0, color: '#10b981' }}>{tdee}</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>TDEE</p></div></div></div>
           </>
@@ -472,6 +648,7 @@ export default function CoachZen() {
         ))}
       </nav>
 
+      {/* MODALS */}
       {showWeightModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={() => setShowWeightModal(false)}>
           <div style={{ background: '#1e293b', borderRadius: 20, padding: 20, maxWidth: 320, width: '100%' }} onClick={e => e.stopPropagation()}>
@@ -513,6 +690,55 @@ export default function CoachZen() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}><h2 style={{ fontSize: 20, fontWeight: 'bold', margin: 0, color: 'white' }}>🤖 Analyse IA</h2><button onClick={() => setShowAnalysis(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 24, cursor: 'pointer' }}>×</button></div>
             <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}><button onClick={() => fetchAnalysis('week')} style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', cursor: 'pointer', background: analysisPeriod === 'week' ? '#8b5cf6' : 'rgba(255,255,255,0.1)', color: 'white', fontWeight: 'bold' }}>7 jours</button><button onClick={() => fetchAnalysis('month')} style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', cursor: 'pointer', background: analysisPeriod === 'month' ? '#8b5cf6' : 'rgba(255,255,255,0.1)', color: 'white', fontWeight: 'bold' }}>30 jours</button></div>
             {analysisLoading ? <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>Analyse en cours...</p> : <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{analysis || 'Aucune analyse.'}</div>}
+          </div>
+        </div>
+      )}
+
+      {/* VOICE COACH MODAL */}
+      {showVoiceCoach && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 10000, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: 16, borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ fontSize: 18, fontWeight: 'bold', margin: 0, color: 'white' }}>🎙️ Coach Zen Vocal</h2>
+            <button onClick={() => setShowVoiceCoach(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 24, cursor: 'pointer' }}>×</button>
+          </div>
+          
+          <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
+            {voiceMessages.length === 0 && (
+              <div style={{ textAlign: 'center', paddingTop: 40 }}>
+                <div style={{ width: 80, height: 80, borderRadius: 40, background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 40 }}>🧘</span></div>
+                <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, marginBottom: 8 }}>Salut ! Je suis ton Coach Zen.</p>
+                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>Je connais tout ton parcours. Pose-moi une question !</p>
+                <div style={{ marginTop: 20, display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                  {['Comment je progresse ?', 'Des conseils pour aujourd\'hui ?', 'Analyse mes habitudes'].map((q, i) => (
+                    <button key={i} onClick={() => sendVoiceMessage(q)} style={{ padding: '8px 14px', borderRadius: 20, background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', fontSize: 12, cursor: 'pointer' }}>{q}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {voiceMessages.map((msg, i) => (
+              <div key={i} style={{ marginBottom: 12, display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                <div style={{ maxWidth: '80%', padding: 12, borderRadius: 16, background: msg.role === 'user' ? '#8b5cf6' : 'rgba(255,255,255,0.1)', borderBottomRightRadius: msg.role === 'user' ? 4 : 16, borderBottomLeftRadius: msg.role === 'user' ? 16 : 4 }}>
+                  <p style={{ fontSize: 14, color: 'white', margin: 0, lineHeight: 1.5 }}>{msg.content}</p>
+                </div>
+              </div>
+            ))}
+            {voiceLoading && (
+              <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 12 }}>
+                <div style={{ padding: 12, borderRadius: 16, background: 'rgba(255,255,255,0.1)' }}>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: 0 }}>...</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{ padding: 16, borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: 10 }}>
+            <button onClick={startListening} disabled={isListening} style={{ width: 50, height: 50, borderRadius: 25, border: 'none', background: isListening ? '#ef4444' : 'linear-gradient(135deg, #06b6d4, #0891b2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 20 }}>{isListening ? '🔴' : '🎙️'}</span>
+            </button>
+            <input value={voiceInput} onChange={e => setVoiceInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && sendVoiceMessage(voiceInput)} placeholder="Tape ton message..." style={{ flex: 1, padding: 14, borderRadius: 25, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 14 }} />
+            <button onClick={() => sendVoiceMessage(voiceInput)} disabled={!voiceInput.trim() || voiceLoading} style={{ width: 50, height: 50, borderRadius: 25, border: 'none', background: voiceInput.trim() ? 'linear-gradient(135deg, #8b5cf6, #ec4899)' : 'rgba(255,255,255,0.1)', cursor: 'pointer' }}>
+              <span style={{ fontSize: 20 }}>→</span>
+            </button>
           </div>
         </div>
       )}
