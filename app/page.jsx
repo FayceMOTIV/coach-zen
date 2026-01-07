@@ -888,7 +888,7 @@ export default function CoachZen() {
           </div>
           <div style={{ padding: 16, borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: 10 }}>
             <button onClick={startListening} style={{ width: 50, height: 50, borderRadius: 25, border: 'none', background: isListening ? '#ef4444' : '#06b6d4', cursor: 'pointer' }}><span style={{ fontSize: 20 }}>{isListening ? '🔴' : '🎙️'}</span></button>
-            <input value={voiceInput} onChange={e => setVoiceInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && sendVoiceMessage(voiceInput)} placeholder="Message..." style={{ flex: 1, padding: 14, borderRadius: 25, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white' }} />
+            <input value={voiceInput} onChange={e => setVoiceInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendVoiceMessage(voiceInput)} placeholder="Message..." enterKeyHint="send" autoComplete="off" style={{ flex: 1, padding: 14, borderRadius: 25, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 16 }} />
             <button onClick={() => sendVoiceMessage(voiceInput)} disabled={!voiceInput.trim()} style={{ width: 50, height: 50, borderRadius: 25, border: 'none', background: voiceInput.trim() ? '#8b5cf6' : 'rgba(255,255,255,0.1)', cursor: 'pointer' }}><span>→</span></button>
           </div>
         </div>
