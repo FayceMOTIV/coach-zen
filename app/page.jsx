@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 
 const formatDate = (d) => d.toISOString().split('T')[0];
 const getDayName = (d) => ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'][d.getDay()];
@@ -17,7 +17,7 @@ const saveData = (k, v) => {
 };
 
 const getDefaultDay = () => ({ 
-  habits: { breakfast: false, lunch: false, snack: false, dinner: false, plannedTreat: false }, 
+  habits: { breakfast: false, fasting: false, lunch: false, snack: false, dinner: false, plannedTreat: false }, 
   sleep: 7, nap: 0, energy: 3, 
   movement: { workout: false, walk: false, run: false }, 
   ecarts: { petit: 0, moyen: 0, gros: 0 },
@@ -34,7 +34,14 @@ const getCustomMealsPoints = (meals) => (!meals || !Array.isArray(meals)) ? 0 : 
 const calcScore = (d) => { 
   if (!d) return 0;
   let s = 0; 
-  if (d.habits) { if (d.habits.breakfast) s += 20; if (d.habits.lunch) s += 20; if (d.habits.snack) s += 20; if (d.habits.dinner) s += 20; if (d.habits.plannedTreat) s += 20; }
+  if (d.habits) { 
+    if (d.habits.breakfast) s += 20;
+    if (d.habits.fasting) s += 20;
+    if (d.habits.lunch) s += 20; 
+    if (d.habits.snack) s += 20; 
+    if (d.habits.dinner) s += 20; 
+    if (d.habits.plannedTreat) s += 20; 
+  }
   s += getCustomMealsPoints(d.customMeals);
   if (d.sleep >= 6.5) s += 10; 
   if (d.nap >= 60) s += 5; 
@@ -55,11 +62,12 @@ const calcTDEE = (bmr, act) => {
 };
 
 const MEALS = {
-  breakfast: { title: 'Petit-déjeuner', time: 'Matin', emoji: '🍳', colors: ['#f97316', '#f59e0b'], points: 20, kcal: 450 },
-  lunch: { title: 'Déjeuner', time: 'Midi', emoji: '🥗', colors: ['#10b981', '#14b8a6'], points: 20, kcal: 850 },
-  snack: { title: 'Collation', time: 'Pré-sieste', emoji: '🥜', colors: ['#8b5cf6', '#a855f7'], points: 20, kcal: 200 },
-  dinner: { title: 'Dîner', time: '< 20h30', emoji: '🍲', colors: ['#3b82f6', '#6366f1'], points: 20, kcal: 850 },
-  plannedTreat: { title: 'Craquage', time: '21h-22h', emoji: '🍫', colors: ['#ec4899', '#f43f5e'], points: 20, kcal: 300 },
+  breakfast: { title: 'Petit-déj', time: 'Matin', emoji: '🍳', colors: ['#f97316', '#f59e0b'], points: 20, kcal: 450, items: ['6 oeufs', 'Café', 'Eau + sel'] },
+  fasting: { title: 'Jeûne', time: 'Matin', emoji: '⏱️', colors: ['#06b6d4', '#0891b2'], points: 20, kcal: 0, items: ['Jeûne intermittent', 'Eau/Café noir'] },
+  lunch: { title: 'Déjeuner', time: 'Midi', emoji: '🥗', colors: ['#10b981', '#14b8a6'], points: 20, kcal: 850, items: ['250g riz', '300g protéine', 'Légumes'] },
+  snack: { title: 'Collation', time: 'Pré-sieste', emoji: '🥜', colors: ['#8b5cf6', '#a855f7'], points: 20, kcal: 200, items: ['Yaourt grec', 'ou oeuf + amandes'] },
+  dinner: { title: 'Dîner', time: '< 20h30', emoji: '🍲', colors: ['#3b82f6', '#6366f1'], points: 20, kcal: 850, items: ['250g riz', '300g protéine', 'Légumes'] },
+  plannedTreat: { title: 'Craquage', time: '21h-22h', emoji: '🍫', colors: ['#ec4899', '#f43f5e'], points: 20, kcal: 300, items: ['Autorisé', 'Zéro culpabilité'] },
 };
 
 const ECARTS = [
@@ -92,30 +100,52 @@ export default function CoachZen() {
   const isToday = selectedDate === realToday;
 
   useEffect(() => {
-    try {
-      const today = formatDate(new Date());
-      setSelectedDate(today);
-      const saved = loadData('cz_data', {});
-      const savedProfile = loadData('cz_profile', getDefaultProfile());
-      const savedWeight = loadData('cz_weight', []);
-      setAllData(saved || {});
-      setProfile(savedProfile || getDefaultProfile());
-      setWeightHistory(Array.isArray(savedWeight) ? savedWeight : []);
-      setDayData((saved && saved[today]) ? saved[today] : getDefaultDay());
-      setMounted(true);
-      fetch('/api/coach/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ energy: 3, score: 0, slot: 'morning' }) })
-        .then(r => r.json()).then(d => setCoachMessage(d.message || "Le plan commence.")).catch(() => setCoachMessage("Le plan commence."));
-    } catch (e) { console.error('Init error:', e); setMounted(true); }
+    const today = formatDate(new Date());
+    setSelectedDate(today);
+    const saved = loadData('cz_data', {});
+    const savedProfile = loadData('cz_profile', getDefaultProfile());
+    const savedWeight = loadData('cz_weight', []);
+    setAllData(saved || {});
+    setProfile(savedProfile || getDefaultProfile());
+    setWeightHistory(Array.isArray(savedWeight) ? savedWeight : []);
+    setDayData((saved && saved[today]) ? saved[today] : getDefaultDay());
+    setMounted(true);
+    fetch('/api/coach/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ energy: 3, score: 0, slot: 'morning' }) })
+      .then(r => r.json()).then(d => setCoachMessage(d.message || "Le plan commence.")).catch(() => setCoachMessage("Le plan commence."));
   }, []);
 
-  useEffect(() => { if (mounted && selectedDate && allData) setDayData(allData[selectedDate] || getDefaultDay()); }, [selectedDate, mounted, allData]);
-  useEffect(() => { if (!mounted || !selectedDate) return; const newAll = { ...allData, [selectedDate]: dayData }; setAllData(newAll); saveData('cz_data', newAll); }, [dayData, mounted, selectedDate]);
+  useEffect(() => { 
+    if (mounted && selectedDate) {
+      const data = allData[selectedDate];
+      if (data) {
+        setDayData(data);
+      } else {
+        setDayData(getDefaultDay());
+      }
+    }
+  }, [selectedDate, mounted]);
+
+  useEffect(() => { 
+    if (!mounted || !selectedDate) return;
+    const timer = setTimeout(() => {
+      const newAll = { ...allData, [selectedDate]: dayData };
+      setAllData(newAll);
+      saveData('cz_data', newAll);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [dayData, mounted, selectedDate]);
+
   useEffect(() => { if (mounted) saveData('cz_profile', profile); }, [profile, mounted]);
   useEffect(() => { if (mounted) saveData('cz_weight', weightHistory); }, [weightHistory, mounted]);
 
-  const saveWeight = (w) => { const today = formatDate(new Date()); setWeightHistory([...weightHistory.filter(x => x.date !== today), { date: today, weight: Number(w) }]); setProfile(p => ({ ...p, poids: Number(w) })); setShowWeightModal(false); };
+  const saveWeight = useCallback((w) => { 
+    const today = formatDate(new Date()); 
+    setWeightHistory(prev => [...prev.filter(x => x.date !== today), { date: today, weight: Number(w) }]); 
+    setProfile(p => ({ ...p, poids: Number(w) })); 
+    setShowWeightModal(false); 
+  }, []);
 
-  const analyzeFood = async () => {
+  const analyzeFood = useCallback(async () => {
     if (!foodDescription.trim()) return;
     setFoodLoading(true); setFoodResult(null);
     try {
@@ -124,32 +154,43 @@ export default function CoachZen() {
       setFoodResult(data);
     } catch { setFoodResult({ success: false, error: "Erreur" }); }
     setFoodLoading(false);
-  };
+  }, [foodDescription]);
 
-  const addCustomMeal = () => {
+  const addCustomMeal = useCallback(() => {
     if (!foodResult || !foodResult.success) return;
     setDayData(p => ({ ...p, customMeals: [...(p.customMeals || []), { id: Date.now(), name: foodResult.name, kcal: foodResult.kcal, points: foodResult.points, isHealthy: foodResult.isHealthy, details: foodResult.details }] }));
     setShowFoodModal(false); setFoodDescription(''); setFoodResult(null);
-  };
+  }, [foodResult]);
 
-  const removeCustomMeal = (id) => setDayData(p => ({ ...p, customMeals: (p.customMeals || []).filter(m => m.id !== id) }));
+  const removeCustomMeal = useCallback((id) => setDayData(p => ({ ...p, customMeals: (p.customMeals || []).filter(m => m.id !== id) })), []);
 
-  const fetchAnalysis = async (period) => {
+  const fetchAnalysis = useCallback(async (period) => {
     setAnalysisLoading(true); setAnalysisPeriod(period);
     try { const res = await fetch('/api/coach/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ allData, profile, period, weightHistory }) }); const data = await res.json(); setAnalysis(data.analysis || 'Analyse indisponible.'); } catch { setAnalysis("Erreur."); }
     setAnalysisLoading(false);
-  };
+  }, [allData, profile, weightHistory]);
 
   const score = calcScore(dayData);
-  const planKcal = Object.entries(MEALS).reduce((s, [k, m]) => (dayData?.habits?.[k]) ? s + m.kcal : s, 0);
+  const planKcal = useMemo(() => {
+    return Object.entries(MEALS).reduce((s, [k, m]) => (dayData?.habits?.[k]) ? s + m.kcal : s, 0);
+  }, [dayData?.habits]);
   const customKcal = getCustomMealsKcal(dayData.customMeals);
   const ecartsKcal = getEcartsKcal(dayData.ecarts);
   const totalKcal = planKcal + customKcal + ecartsKcal;
   const bmr = calcBMR(profile);
   const tdee = calcTDEE(bmr, profile?.activite);
 
-  const updateHabit = (k, v) => setDayData(p => ({ ...p, habits: { ...(p.habits || {}), [k]: v } }));
-  const updateMovement = (k, v) => setDayData(p => ({ ...p, movement: { ...(p.movement || {}), [k]: v } }));
+  const updateHabit = useCallback((k, v) => {
+    setDayData(p => {
+      const newHabits = { ...(p.habits || {}), [k]: v };
+      // Si on active breakfast, on désactive fasting et vice versa
+      if (k === 'breakfast' && v) newHabits.fasting = false;
+      if (k === 'fasting' && v) newHabits.breakfast = false;
+      return { ...p, habits: newHabits };
+    });
+  }, []);
+  
+  const updateMovement = useCallback((k, v) => setDayData(p => ({ ...p, movement: { ...(p.movement || {}), [k]: v } })), []);
 
   const streak = useMemo(() => { let s = 0; for (let i = 1; i <= 30; i++) { const d = new Date(); d.setDate(d.getDate() - i); if (allData?.[formatDate(d)] && calcScore(allData[formatDate(d)]) >= 50) s++; else break; } return s; }, [allData]);
   const last14Days = useMemo(() => { const days = []; for (let i = 13; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); days.push(d); } return days; }, []);
@@ -157,7 +198,9 @@ export default function CoachZen() {
   const monthAvg = useMemo(() => { const vals = Object.values(allData || {}); const scores = vals.slice(-30).map(d => calcScore(d)).filter(s => s > 0); return scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0; }, [allData]);
   const totalDays = useMemo(() => Object.keys(allData || {}).length, [allData]);
 
-  let selectedDateObj; try { selectedDateObj = selectedDate ? new Date(selectedDate + 'T12:00:00') : new Date(); } catch { selectedDateObj = new Date(); }
+  const selectedDateObj = useMemo(() => {
+    try { return selectedDate ? new Date(selectedDate + 'T12:00:00') : new Date(); } catch { return new Date(); }
+  }, [selectedDate]);
 
   const container = { minHeight: '100dvh', background: '#0f172a', color: 'white', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', paddingBottom: 90 };
   const content = { maxWidth: 500, margin: '0 auto', padding: '12px 16px 20px' };
@@ -208,7 +251,30 @@ export default function CoachZen() {
               <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: '8px 0 0', textAlign: 'center' }}>{(tdee - totalKcal) > 0 ? `📉 Déficit: −${tdee - totalKcal} kcal` : `📈 Surplus: +${Math.abs(tdee - totalKcal)} kcal`}</p>
             </div>
 
-            {Object.entries(MEALS).map(([k, m]) => {
+            {/* Petit-déj + Jeûne sur la même ligne */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <button onClick={() => updateHabit('breakfast', !dayData?.habits?.breakfast)} style={{ flex: 1, padding: 2, borderRadius: 14, background: `linear-gradient(135deg, ${MEALS.breakfast.colors[0]}, ${MEALS.breakfast.colors[1]})`, border: 'none', cursor: 'pointer' }}>
+                <div style={{ background: dayData?.habits?.breakfast ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.95)', borderRadius: 12, padding: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{dayData?.habits?.breakfast ? '✓' : MEALS.breakfast.emoji}</div>
+                    <div style={{ flex: 1, textAlign: 'left' }}><p style={{ fontSize: 13, fontWeight: 'bold', color: 'white', margin: 0 }}>{MEALS.breakfast.title}</p><p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{MEALS.breakfast.kcal} kcal</p></div>
+                    <span style={{ fontSize: 12, fontWeight: 'bold', color: 'white', background: 'rgba(255,255,255,0.1)', padding: '4px 8px', borderRadius: 6 }}>{dayData?.habits?.breakfast ? '✓' : '+20'}</span>
+                  </div>
+                </div>
+              </button>
+              <button onClick={() => updateHabit('fasting', !dayData?.habits?.fasting)} style={{ flex: 1, padding: 2, borderRadius: 14, background: `linear-gradient(135deg, ${MEALS.fasting.colors[0]}, ${MEALS.fasting.colors[1]})`, border: 'none', cursor: 'pointer' }}>
+                <div style={{ background: dayData?.habits?.fasting ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.95)', borderRadius: 12, padding: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{dayData?.habits?.fasting ? '✓' : MEALS.fasting.emoji}</div>
+                    <div style={{ flex: 1, textAlign: 'left' }}><p style={{ fontSize: 13, fontWeight: 'bold', color: 'white', margin: 0 }}>{MEALS.fasting.title}</p><p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: 0 }}>0 kcal</p></div>
+                    <span style={{ fontSize: 12, fontWeight: 'bold', color: 'white', background: 'rgba(255,255,255,0.1)', padding: '4px 8px', borderRadius: 6 }}>{dayData?.habits?.fasting ? '✓' : '+20'}</span>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            {/* Autres repas */}
+            {Object.entries(MEALS).filter(([k]) => k !== 'breakfast' && k !== 'fasting').map(([k, m]) => {
               const checked = dayData?.habits?.[k];
               return (
                 <button key={k} onClick={() => updateHabit(k, !checked)} style={{ width: '100%', padding: 3, borderRadius: 18, background: `linear-gradient(135deg, ${m.colors[0]}, ${m.colors[1]})`, border: 'none', cursor: 'pointer', marginBottom: 10 }}>
@@ -325,11 +391,43 @@ export default function CoachZen() {
           <>
             <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 14, color: 'white' }}>Mon Plan</h1>
             <div style={card}><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, margin: 0 }}>Total: <strong style={{ color: '#10b981' }}>2650 kcal</strong> • TDEE: <strong style={{ color: '#06b6d4' }}>{tdee} kcal</strong></p></div>
-            {Object.entries(MEALS).map(([k, m]) => (
+            {Object.entries(MEALS).filter(([k]) => k !== 'fasting').map(([k, m]) => (
               <div key={k} style={{ background: `linear-gradient(135deg, ${m.colors[0]}, ${m.colors[1]})`, borderRadius: 16, padding: 14, marginBottom: 10 }}>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}><span style={{ fontSize: 28 }}>{m.emoji}</span><div style={{ flex: 1 }}><p style={{ fontSize: 16, fontWeight: 'bold', margin: 0 }}>{m.title}</p><p style={{ fontSize: 12, margin: 0, opacity: 0.8 }}>{m.time} • {m.kcal} kcal</p></div></div>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <div style={{ width: 50, height: 50, borderRadius: 12, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 26 }}>{m.emoji}</span></div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <p style={{ fontSize: 16, fontWeight: 'bold', margin: 0 }}>{m.title}</p>
+                      <span style={{ fontSize: 12, background: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: 8 }}>{m.kcal} kcal</span>
+                    </div>
+                    <p style={{ fontSize: 11, margin: '4px 0 0', opacity: 0.8 }}>{m.time}</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                      {m.items.map((item, i) => (
+                        <span key={i} style={{ fontSize: 10, background: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: 6 }}>{item}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             ))}
+            {/* Jeûne séparé */}
+            <div style={{ background: `linear-gradient(135deg, ${MEALS.fasting.colors[0]}, ${MEALS.fasting.colors[1]})`, borderRadius: 16, padding: 14, marginBottom: 10 }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <div style={{ width: 50, height: 50, borderRadius: 12, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 26 }}>{MEALS.fasting.emoji}</span></div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <p style={{ fontSize: 16, fontWeight: 'bold', margin: 0 }}>Jeûne Intermittent</p>
+                    <span style={{ fontSize: 12, background: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: 8 }}>0 kcal</span>
+                  </div>
+                  <p style={{ fontSize: 11, margin: '4px 0 0', opacity: 0.8 }}>Alternative au petit-déjeuner</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                    {MEALS.fasting.items.map((item, i) => (
+                      <span key={i} style={{ fontSize: 10, background: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: 6 }}>{item}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </>
         )}
 
