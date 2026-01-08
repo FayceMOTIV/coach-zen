@@ -1,6 +1,6 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
-const client = new Anthropic();
+const client = new OpenAI();
 
 export async function POST(request) {
   try {
@@ -86,13 +86,13 @@ Instructions:
 
 Format: Utilise des emojis, des sections claires, reste concis (max 200 mots)`;
 
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+    const message = await client.chat.completions.create({
+      model: "gpt-4o-mini",
       max_tokens: 400,
       messages: [{ role: "user", content: prompt }],
     });
 
-    const report = message.content[0]?.text || "Rapport non disponible";
+    const report = message.choices[0]?.message?.content || "Rapport non disponible";
 
     return Response.json({
       success: true,

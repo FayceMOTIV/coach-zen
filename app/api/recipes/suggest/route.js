@@ -1,6 +1,6 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
-const client = new Anthropic();
+const client = new OpenAI();
 
 const mealContext = {
   breakfast: {
@@ -78,14 +78,14 @@ IMPORTANT :
 
 Réponds UNIQUEMENT avec le JSON : { "recipes": [...] }`;
 
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+    const message = await client.chat.completions.create({
+      model: "gpt-4o-mini",
       max_tokens: 1000,
-      temperature: 1, // Max creativity
+      temperature: 1.2, // Max creativity
       messages: [{ role: "user", content: prompt }],
     });
 
-    const text = message.content[0]?.text || "";
+    const text = message.choices[0]?.message?.content || "";
 
     try {
       const jsonMatch = text.match(/\{[\s\S]*\}/);
