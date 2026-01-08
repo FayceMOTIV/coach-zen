@@ -268,48 +268,28 @@ export default function CoachZen() {
   const realToday = useMemo(() => formatDate(new Date()), []);
   const isToday = selectedDate === realToday;
 
-  // Auth listener - simplified and robust
+
+  // Auth listener - simplified
   useEffect(() => {
-    console.log('[Auth] useEffect start');
     let isMounted = true;
 
-    // 1. Check redirect result (for mobile Google auth)
-      console.log('[Auth] Redirect result:', result);
-      if (!isMounted) return;
-
-      if (result.success && result.user) {
-        console.log('[Auth] Got user from redirect:', result.user.email);
-        setUser(result.user);
-        setAuthLoading(false);
-      }
-    }).catch(err => {
-      console.error('[Auth] Redirect error:', err);
-    });
-
-    // 2. Listen for auth state changes (main auth source)
     const unsubscribe = onAuthChange((firebaseUser) => {
-      console.log('[Auth] State changed:', firebaseUser?.email || 'null');
       if (!isMounted) return;
-
       setUser(firebaseUser);
       setAuthLoading(false);
     });
 
-    // 3. Fallback: stop loading after 3s max
     const timeout = setTimeout(() => {
-      if (isMounted) {
-        console.log('[Auth] Timeout fallback');
-        setAuthLoading(false);
-      }
+      if (isMounted) setAuthLoading(false);
     }, 3000);
 
     return () => {
-      console.log('[Auth] Cleanup');
       isMounted = false;
       clearTimeout(timeout);
       unsubscribe();
     };
   }, []);
+
   // Stats pour badges
   const stats = useMemo(() => {
     const sorted = [...weightHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
