@@ -518,7 +518,7 @@ export default function CoachZen() {
             <div style={{ textAlign: 'center', marginBottom: 12 }}>
               {!isToday && <button onClick={() => setSelectedDate(realToday)} style={{ background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 8, padding: '6px 14px', marginBottom: 8, cursor: 'pointer' }}><span style={{ color: '#a78bfa', fontSize: 12 }}>← Retour à aujourd'hui</span></button>}
               <p style={{ color: isToday ? 'rgba(255,255,255,0.4)' : '#f59e0b', fontSize: 12, margin: 0 }}>{isToday ? getDayName(selectedDateObj) : '⚠️ Édition'}</p>
-              <h1 style={{ fontSize: 26, fontWeight: 'bold', margin: '4px 0', color: 'white' }}>{selectedDateObj.getDate()} {getMonthName(selectedDateObj)}</h1>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}><button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(formatDate(d)); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8, width: 36, height: 36, cursor: 'pointer', color: 'white', fontSize: 18 }}>←</button><h1 style={{ fontSize: 26, fontWeight: 'bold', margin: 0, color: 'white' }}>{selectedDateObj.getDate()} {getMonthName(selectedDateObj)}</h1><button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); if (d <= new Date()) setSelectedDate(formatDate(d)); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8, width: 36, height: 36, cursor: 'pointer', color: 'white', fontSize: 18, opacity: isToday ? 0.3 : 1 }} disabled={isToday}>→</button></div>
             </div>
 
             {isToday && coachMessage && (
