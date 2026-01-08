@@ -63,7 +63,7 @@ const calcScore = (d) => {
   const gratitudesFilled = (d.gratitudes || []).filter(g => g && g.trim()).length;
   if (gratitudesFilled >= 3) s += 5;
   s -= getEcartsCount(d.ecarts) * 10;
-  return Math.max(0, Math.min(s, 100)); 
+  return Math.max(0, s); // No cap - XP can exceed 100
 };
 
 const calcBMR = (p) => {
@@ -744,6 +744,43 @@ export default function CoachZen() {
   const last14Days = useMemo(() => { const days = []; for (let i = 13; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); days.push(d); } return days; }, []);
   const monthAvg = useMemo(() => { const vals = Object.values(allData || {}); const scores = vals.slice(-30).map(d => calcScore(d)).filter(s => s > 0); return scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0; }, [allData]);
   const totalDays = stats.totalDays;
+
+  // Weekly XP (current week: Monday to Sunday)
+  const weeklyXP = useMemo(() => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    monday.setHours(0, 0, 0, 0);
+
+    let total = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      if (d > today) break;
+      const key = formatDate(d);
+      if (allData?.[key]) {
+        total += calcScore(allData[key]);
+      }
+    }
+    return total;
+  }, [allData]);
+
+  // Monthly XP (current month)
+  const monthlyXP = useMemo(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+
+    let total = 0;
+    Object.entries(allData || {}).forEach(([dateStr, data]) => {
+      const d = new Date(dateStr);
+      if (d.getFullYear() === year && d.getMonth() === month) {
+        total += calcScore(data);
+      }
+    });
+    return total;
+  }, [allData]);
   const selectedDateObj = useMemo(() => selectedDate ? new Date(selectedDate + 'T12:00:00') : new Date(), [selectedDate]);
   const weightChartData = useMemo(() => {
     const sorted = [...weightHistory].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(-30);
@@ -877,8 +914,36 @@ export default function CoachZen() {
             )}
 
             <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16 }}>
-              <div><h2 style={{ fontSize: 16, fontWeight: 'bold', margin: 0, color: theme.text }}>Score</h2><p style={{ color: theme.textMuted, fontSize: 14, margin: '4px 0' }}>{score >= 80 ? '🔥 On fire!' : score >= 60 ? '💪 Solide' : score >= 40 ? '👍 En route' : '🌱 Ça pousse'}</p></div>
-              <div style={{ width: 80, height: 80, borderRadius: 40, border: '6px solid #8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 28, fontWeight: 'bold', color: theme.text }}>{score}</span></div>
+              <div>
+                <h2 style={{ fontSize: 16, fontWeight: 'bold', margin: 0, color: theme.text }}>Score du jour</h2>
+                <p style={{ color: theme.textMuted, fontSize: 14, margin: '4px 0' }}>
+                  {score >= 100 ? '✨ Journée parfaite!' : score >= 80 ? '🔥 On fire!' : score >= 50 ? '💪 Solide' : '🌱 En route'}
+                </p>
+              </div>
+              <div style={{
+                width: 80, height: 80, borderRadius: 40,
+                border: `6px solid ${score >= 100 ? '#fbbf24' : score >= 80 ? '#22c55e' : score >= 50 ? '#8b5cf6' : '#f59e0b'}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: score >= 100 ? 'rgba(251,191,36,0.15)' : 'transparent',
+                boxShadow: score >= 100 ? '0 0 20px rgba(251,191,36,0.5), 0 0 40px rgba(251,191,36,0.2)' : 'none'
+              }}>
+                <div style={{ textAlign: 'center' }}>
+                  <span style={{ fontSize: 26, fontWeight: 'bold', color: score >= 100 ? '#fbbf24' : score >= 80 ? '#22c55e' : score >= 50 ? '#8b5cf6' : '#f59e0b' }}>{score}</span>
+                  <p style={{ fontSize: 10, margin: 0, color: theme.textMuted }}>pts</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Weekly and Monthly XP */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+              <div style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(168,85,247,0.15))', borderRadius: 14, padding: 14, border: '1px solid rgba(139,92,246,0.2)' }}>
+                <p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>📅 Cette semaine</p>
+                <p style={{ fontSize: 24, fontWeight: 'bold', margin: '4px 0 0', color: '#8b5cf6' }}>{weeklyXP} <span style={{ fontSize: 12, fontWeight: 'normal' }}>pts</span></p>
+              </div>
+              <div style={{ background: 'linear-gradient(135deg, rgba(6,182,212,0.15), rgba(14,165,233,0.15))', borderRadius: 14, padding: 14, border: '1px solid rgba(6,182,212,0.2)' }}>
+                <p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>🗓️ Ce mois</p>
+                <p style={{ fontSize: 24, fontWeight: 'bold', margin: '4px 0 0', color: '#06b6d4' }}>{monthlyXP} <span style={{ fontSize: 12, fontWeight: 'normal' }}>pts</span></p>
+              </div>
             </div>
 
             {/* Daily AI Analysis */}
@@ -1180,13 +1245,14 @@ export default function CoachZen() {
               <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: 100, gap: 8 }}>
                 {enhancedStats.last7Days.map((day, i) => (
                   <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 10, color: theme.text, fontWeight: 'bold' }}>{day.score || ''}</span>
+                    <span style={{ fontSize: 10, color: day.score >= 100 ? '#fbbf24' : theme.text, fontWeight: 'bold' }}>{day.score ? (day.score >= 100 ? '✨' + day.score : day.score) : ''}</span>
                     <div style={{
                       width: '100%',
-                      height: `${Math.max(day.score, 4)}%`,
-                      background: day.score >= 80 ? 'linear-gradient(180deg, #22c55e, #16a34a)' : day.score >= 50 ? 'linear-gradient(180deg, #8b5cf6, #7c3aed)' : day.score > 0 ? 'linear-gradient(180deg, #f59e0b, #d97706)' : theme.buttonBg,
+                      height: `${Math.min(Math.max(day.score, 4), 100)}%`,
+                      background: day.score >= 100 ? 'linear-gradient(180deg, #fbbf24, #f59e0b)' : day.score >= 80 ? 'linear-gradient(180deg, #22c55e, #16a34a)' : day.score >= 50 ? 'linear-gradient(180deg, #8b5cf6, #7c3aed)' : day.score > 0 ? 'linear-gradient(180deg, #f59e0b, #d97706)' : theme.buttonBg,
                       borderRadius: 4,
-                      minHeight: 4
+                      minHeight: 4,
+                      boxShadow: day.score >= 100 ? '0 0 10px rgba(251,191,36,0.5)' : 'none'
                     }} />
                     <span style={{ fontSize: 10, color: theme.textMuted }}>{day.label}</span>
                   </div>
@@ -1202,7 +1268,7 @@ export default function CoachZen() {
                   <button key={i} onClick={() => { setSelectedDate(k); setTab('today'); }} style={{ textAlign: 'center', padding: 6, borderRadius: 10, background: k === selectedDate ? '#8b5cf6' : 'transparent', border: 'none', cursor: 'pointer' }}>
                     <p style={{ fontSize: 9, color: theme.textFaint, margin: 0 }}>{getDayName(d)}</p>
                     <p style={{ fontSize: 12, margin: '3px 0', color: k === selectedDate ? 'white' : theme.text }}>{d.getDate()}</p>
-                    <div style={{ width: 26, height: 26, margin: '0 auto', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 'bold', color: 'white', background: !data ? theme.buttonBg : s >= 80 ? '#10b981' : s >= 50 ? '#f59e0b' : '#ef4444' }}>{data ? s : '–'}</div>
+                    <div style={{ width: 26, height: 26, margin: '0 auto', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 'bold', color: 'white', background: !data ? theme.buttonBg : s >= 100 ? '#fbbf24' : s >= 80 ? '#10b981' : s >= 50 ? '#f59e0b' : '#ef4444', boxShadow: s >= 100 ? '0 0 6px rgba(251,191,36,0.5)' : 'none' }}>{data ? s : '–'}</div>
                   </button>
                 ); })}
               </div>
@@ -1240,13 +1306,28 @@ export default function CoachZen() {
               ))}
             </div>
 
-            {/* Section 6 : Records */}
+            {/* Section 6 : Cumuls XP */}
+            <div style={card}>
+              <p style={{ fontSize: 14, fontWeight: 'bold', color: theme.text, margin: '0 0 14px' }}>📊 Cumuls XP</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(168,85,247,0.1))', borderRadius: 12, padding: 12, textAlign: 'center' }}>
+                  <p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>Cette semaine</p>
+                  <p style={{ fontSize: 22, fontWeight: 'bold', color: '#8b5cf6', margin: '4px 0 0' }}>{weeklyXP} pts</p>
+                </div>
+                <div style={{ background: 'linear-gradient(135deg, rgba(6,182,212,0.15), rgba(14,165,233,0.1))', borderRadius: 12, padding: 12, textAlign: 'center' }}>
+                  <p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>Ce mois</p>
+                  <p style={{ fontSize: 22, fontWeight: 'bold', color: '#06b6d4', margin: '4px 0 0' }}>{monthlyXP} pts</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 7 : Records */}
             <div style={card}>
               <p style={{ fontSize: 14, fontWeight: 'bold', color: theme.text, margin: '0 0 14px' }}>🏆 Records personnels</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ color: theme.textMuted, fontSize: 13 }}>Meilleur score</span>
-                  <span style={{ color: '#22c55e', fontWeight: 'bold', fontSize: 16 }}>{enhancedStats.bestScore}/100</span>
+                  <span style={{ color: enhancedStats.bestScore >= 100 ? '#fbbf24' : '#22c55e', fontWeight: 'bold', fontSize: 16 }}>{enhancedStats.bestScore >= 100 ? '✨ ' : ''}{enhancedStats.bestScore} pts</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ color: theme.textMuted, fontSize: 13 }}>Plus long streak</span>
