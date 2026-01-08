@@ -1,15 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { checkRedirectResult, 
-  saveToFirebase, 
-  loadFromFirebase, 
-  signInWithGoogle, 
-  signInWithEmail, 
-  signUpWithEmail, 
-  resetPassword, 
-  logOut, 
-  onAuthChange 
+import { checkRedirectResult,
+  saveToFirebase,
+  loadFromFirebase,
+  signInWithGoogle,
+  signInWithEmail,
+  signUpWithEmail,
+  resetPassword,
+  logOut,
+  onAuthChange,
+  getCurrentUser
 } from '../lib/firebase';
 
 const formatDate = (d) => d.toISOString().split('T')[0];
@@ -117,7 +118,7 @@ const ECARTS = [
 ];
 
 // LOGIN COMPONENT
-function LoginScreen() {
+function LoginScreen({ onAuthSuccess }) {
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -126,19 +127,32 @@ function LoginScreen() {
   const [message, setMessage] = useState('');
 
   const handleGoogle = async () => {
+    console.log('[LoginScreen] handleGoogle clicked');
     setLoading(true);
     setError('');
     try {
       const result = await signInWithGoogle();
-      // For redirect mode, page navigates away, so loading stays true
+      console.log('[LoginScreen] signInWithGoogle returned:', result);
+
+      // For redirect mode, page navigates away
+      if (result && result.redirect) {
+        return;
+      }
+
       // For popup mode, check result
       if (result && !result.success) {
         setError(result.error || 'Erreur de connexion Google');
         setLoading(false);
+        return;
       }
-      // On success: onAuthStateChanged triggers parent re-render
+
+      // On success: manually trigger auth update as fallback
+      if (result && result.success && result.user) {
+        console.log('[LoginScreen] Popup success, calling onAuthSuccess');
+        onAuthSuccess?.(result.user);
+      }
     } catch (err) {
-      console.error('Google sign-in error:', err);
+      console.error('[LoginScreen] Google sign-in error:', err);
       setError('Erreur de connexion Google');
       setLoading(false);
     }
@@ -153,20 +167,27 @@ function LoginScreen() {
 
     try {
       if (mode === 'login') {
+        console.log('[LoginScreen] Signing in with email...');
         const result = await signInWithEmail(email, password);
+        console.log('[LoginScreen] signInWithEmail result:', result.success);
         if (!result.success) {
           setError(result.error || 'Erreur de connexion');
           setLoading(false);
+        } else if (result.user) {
+          console.log('[LoginScreen] Email login success, calling onAuthSuccess');
+          onAuthSuccess?.(result.user);
         }
-        // On success: onAuthStateChanged will trigger parent re-render
-        // But keep loading=true to prevent double-clicks during transition
       } else if (mode === 'signup') {
+        console.log('[LoginScreen] Signing up with email...');
         const result = await signUpWithEmail(email, password);
+        console.log('[LoginScreen] signUpWithEmail result:', result.success);
         if (!result.success) {
           setError(result.error || 'Erreur inscription');
           setLoading(false);
+        } else if (result.user) {
+          console.log('[LoginScreen] Email signup success, calling onAuthSuccess');
+          onAuthSuccess?.(result.user);
         }
-        // On success: onAuthStateChanged will trigger parent re-render
       } else if (mode === 'reset') {
         const result = await resetPassword(email);
         if (result.success) {
@@ -178,7 +199,7 @@ function LoginScreen() {
         setLoading(false);
       }
     } catch (err) {
-      console.error('Auth error:', err);
+      console.error('[LoginScreen] Auth error:', err);
       setError('Une erreur est survenue');
       setLoading(false);
     }
@@ -283,31 +304,50 @@ export default function CoachZen() {
   const realToday = useMemo(() => formatDate(new Date()), []);
   const isToday = selectedDate === realToday;
 
-  // Auth listener - check redirect result and listen for auth state changes
+  // Auth listener - use onAuthStateChanged as the single source of truth
   useEffect(() => {
+    console.log('[Page] Auth useEffect mounted');
     let isMounted = true;
+    let authResolved = false;
 
-    // Check for redirect result (mobile Google sign-in)
+    // Check for redirect result errors (don't use for user - onAuthStateChanged handles that)
     checkRedirectResult().then(result => {
-      if (!isMounted) return;
-      if (result.success && result.user) {
-        setUser(result.user);
+      console.log('[Page] checkRedirectResult resolved:', result);
+      if (result.error) {
+        console.error('[Page] Redirect had error:', result.error);
       }
-      // Always set authLoading to false after checking redirect
-      setAuthLoading(false);
-    }).catch(() => {
-      if (isMounted) setAuthLoading(false);
+    }).catch((err) => {
+      console.error('[Page] checkRedirectResult error:', err);
     });
 
-    // Listen for auth state changes
+    // onAuthStateChanged is the single source of truth for auth state
+    // It fires once when auth state is determined (including restored sessions)
     const unsubscribe = onAuthChange((firebaseUser) => {
-      if (!isMounted) return;
+      console.log('[Page] onAuthChange callback, user:', firebaseUser?.email || 'null', 'isMounted:', isMounted);
+      if (!isMounted) {
+        console.log('[Page] Component unmounted, ignoring auth change');
+        return;
+      }
+
+      authResolved = true;
+      console.log('[Page] Setting user:', firebaseUser?.email || 'null');
       setUser(firebaseUser);
+      console.log('[Page] Setting authLoading to false');
       setAuthLoading(false);
     });
+
+    // Fallback timeout - if auth doesn't resolve in 5 seconds, stop loading
+    const timeout = setTimeout(() => {
+      if (!authResolved && isMounted) {
+        console.warn('[Page] Auth timeout - no response from Firebase after 5s');
+        setAuthLoading(false);
+      }
+    }, 5000);
 
     return () => {
+      console.log('[Page] Auth useEffect cleanup');
       isMounted = false;
+      clearTimeout(timeout);
       unsubscribe();
     };
   }, []);
@@ -588,14 +628,23 @@ export default function CoachZen() {
   const content = { maxWidth: 500, margin: '0 auto', padding: '12px 16px 20px' };
   const card = { background: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 14, marginBottom: 12, border: '1px solid rgba(255,255,255,0.1)' };
 
+  // Debug render state
+  console.log('[Page] Render - authLoading:', authLoading, 'user:', user?.email || 'null', 'mounted:', mounted);
+
   // Show loading
   if (authLoading) {
+    console.log('[Page] Showing loading screen');
     return <div style={container}><div style={content}><p style={{ textAlign: 'center', paddingTop: 100 }}>Chargement...</p></div></div>;
   }
 
   // Show login if not authenticated
   if (!user) {
-    return <LoginScreen />;
+    console.log('[Page] Showing LoginScreen');
+    return <LoginScreen onAuthSuccess={(u) => {
+      console.log('[Page] onAuthSuccess called with user:', u?.email);
+      setUser(u);
+      setAuthLoading(false);
+    }} />;
   }
 
   // Show loading data
