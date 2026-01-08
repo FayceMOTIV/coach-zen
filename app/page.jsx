@@ -894,9 +894,9 @@ export default function CoachZen() {
                   <span style={{ fontSize: 24 }}>⏱️</span>
                   <div>
                     <p style={{ fontSize: 14, fontWeight: 'bold', margin: 0, color: theme.text }}>Jeûne intermittent</p>
-                    <p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>
+                    <p style={{ fontSize: 11, color: dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end ? '#06b6d4' : theme.textMuted, margin: 0, fontFamily: dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end ? 'monospace' : 'inherit', fontWeight: dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end ? 'bold' : 'normal' }}>
                       {dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end
-                        ? `En cours: ${Math.floor(fastingElapsed / 3600)}h ${Math.floor((fastingElapsed % 3600) / 60)}min`
+                        ? `${Math.floor(fastingElapsed / 3600).toString().padStart(2, '0')}:${Math.floor((fastingElapsed % 3600) / 60).toString().padStart(2, '0')}:${(fastingElapsed % 60).toString().padStart(2, '0')} / ${dayData?.fastingTimer?.goal || 16}h`
                         : dayData?.fastingTimer?.end
                           ? `✅ ${Math.floor((dayData.fastingTimer.end - dayData.fastingTimer.start) / 3600000)}h terminé`
                           : `Objectif: ${dayData?.fastingTimer?.goal || 16}h`}
@@ -1014,12 +1014,12 @@ export default function CoachZen() {
                     strokeDashoffset={565.5 - (Math.min(1, fastingElapsed / ((dayData?.fastingTimer?.goal || 16) * 3600)) * 565.5)} />
                 </svg>
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <p style={{ fontSize: 36, fontWeight: 'bold', margin: 0, fontFamily: 'monospace', color: theme.text }}>
+                  <p style={{ fontSize: 32, fontWeight: 'bold', margin: 0, fontFamily: 'monospace', color: theme.text }}>
                     {dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end
-                      ? `${Math.floor(fastingElapsed / 3600).toString().padStart(2, '0')}:${Math.floor((fastingElapsed % 3600) / 60).toString().padStart(2, '0')}`
+                      ? `${Math.floor(fastingElapsed / 3600).toString().padStart(2, '0')}:${Math.floor((fastingElapsed % 3600) / 60).toString().padStart(2, '0')}:${(fastingElapsed % 60).toString().padStart(2, '0')}`
                       : dayData?.fastingTimer?.end
-                        ? `${Math.floor((dayData.fastingTimer.end - dayData.fastingTimer.start) / 3600000)}h`
-                        : '00:00'}
+                        ? `${Math.floor((dayData.fastingTimer.end - dayData.fastingTimer.start) / 3600000)}h ${Math.floor(((dayData.fastingTimer.end - dayData.fastingTimer.start) % 3600000) / 60000)}min`
+                        : '00:00:00'}
                   </p>
                   <p style={{ fontSize: 12, color: theme.textMuted, margin: '4px 0 0' }}>
                     {dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end
