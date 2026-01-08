@@ -2,10 +2,8 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
-  checkRedirectResult,
   saveToFirebase,
   loadFromFirebase,
-  signInWithGoogle,
   signInWithEmail,
   signUpWithEmail,
   resetPassword,
@@ -126,87 +124,43 @@ function LoginScreen() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
-  const handleGoogle = async () => {
-    console.log('[Login] Google clicked');
-    setError('');
-    setLoading(true);
-
-    try {
-      const result = await signInWithGoogle();
-      console.log('[Login] Google result:', result);
-
-      if (result && !result.success) {
-        setError(result.error || 'Erreur Google');
-        setLoading(false);
-        return;
-      }
-
-      // Si redirect: la page va se recharger
-      // Si popup success: onAuthStateChanged va trigger
-      // Fallback: reset loading après 10s
-      setTimeout(() => {
-        console.log('[Login] Google timeout fallback');
-        setLoading(false);
-      }, 10000);
-    } catch (err) {
-      console.error('[Login] Google error:', err);
-      setError('Erreur de connexion Google');
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (loading) return;
-
-    console.log('[Login] Submit:', mode);
     setError('');
     setMessage('');
     setLoading(true);
-
+    
     try {
-      // Reset password
       if (mode === 'reset') {
         const result = await resetPassword(email);
         if (result.success) {
           setMessage('Email envoyé ! Vérifie ta boîte mail.');
           setMode('login');
         } else {
-          setError(result.error || 'Erreur');
+          setError(result.error);
         }
         setLoading(false);
         return;
       }
-
-      // Login or Signup
-      const fn = mode === 'login' ? signInWithEmail : signUpWithEmail;
-      const result = await fn(email, password);
-      console.log('[Login] Email result:', result.success);
-
+      
+      const result = mode === 'login' 
+        ? await signInWithEmail(email, password)
+        : await signUpWithEmail(email, password);
+      
       if (!result.success) {
-        setError(result.error || 'Erreur');
+        setError(result.error);
         setLoading(false);
-        return;
       }
-
-      // Success: onAuthStateChanged va trigger et changer l'écran
-      // Fallback timeout au cas où
-      console.log('[Login] Success, waiting for onAuthStateChanged...');
-      setTimeout(() => {
-        console.log('[Login] Email timeout fallback');
-        setLoading(false);
-      }, 5000);
+      // Si success: onAuthStateChanged va changer l'écran
+      setTimeout(() => setLoading(false), 5000);
     } catch (err) {
-      console.error('[Login] Error:', err);
       setError('Une erreur est survenue');
       setLoading(false);
     }
   };
 
-  const container = { minHeight: '100dvh', background: '#0f172a', color: 'white', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 };
-
   return (
-    <div style={container}>
+    <div style={{ minHeight: '100dvh', background: '#0f172a', color: 'white', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ maxWidth: 360, width: '100%' }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ width: 80, height: 80, borderRadius: 20, background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
@@ -216,28 +170,36 @@ function LoginScreen() {
           <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Ton coach nutrition personnel</p>
         </div>
 
-        <button onClick={handleGoogle} disabled={loading} style={{ width: '100%', padding: 16, borderRadius: 12, border: '1px solid rgba(255,255,255,0.2)', background: 'white', color: '#333', fontSize: 16, fontWeight: 'bold', cursor: loading ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 16, opacity: loading ? 0.7 : 1 }}>
-          <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-          {loading ? 'Connexion...' : 'Continuer avec Google'}
-        </button>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '20px 0' }}>
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.1)' }} />
-          <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>ou</span>
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.1)' }} />
-        </div>
-
         <form onSubmit={handleSubmit}>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" required style={{ width: '100%', padding: 14, borderRadius: 10, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 16, marginBottom: 12, boxSizing: 'border-box' }} />
+          <input 
+            type="email" 
+            value={email} 
+            onChange={e => setEmail(e.target.value)} 
+            placeholder="Email" 
+            required 
+            style={{ width: '100%', padding: 14, borderRadius: 10, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 16, marginBottom: 12, boxSizing: 'border-box' }} 
+          />
           
           {mode !== 'reset' && (
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mot de passe (min 6 car.)" required minLength={6} style={{ width: '100%', padding: 14, borderRadius: 10, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 16, marginBottom: 12, boxSizing: 'border-box' }} />
+            <input 
+              type="password" 
+              value={password} 
+              onChange={e => setPassword(e.target.value)} 
+              placeholder="Mot de passe (min 6 car.)" 
+              required 
+              minLength={6} 
+              style={{ width: '100%', padding: 14, borderRadius: 10, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 16, marginBottom: 12, boxSizing: 'border-box' }} 
+            />
           )}
 
           {error && <p style={{ color: '#ef4444', fontSize: 14, margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
           {message && <p style={{ color: '#22c55e', fontSize: 14, margin: '0 0 12px', textAlign: 'center' }}>{message}</p>}
 
-          <button type="submit" disabled={loading} style={{ width: '100%', padding: 14, borderRadius: 10, border: 'none', background: loading ? 'rgba(139,92,246,0.5)' : 'linear-gradient(135deg, #8b5cf6, #ec4899)', color: 'white', fontSize: 16, fontWeight: 'bold', cursor: loading ? 'wait' : 'pointer', marginBottom: 16 }}>
+          <button 
+            type="submit" 
+            disabled={loading} 
+            style={{ width: '100%', padding: 14, borderRadius: 10, border: 'none', background: loading ? 'rgba(139,92,246,0.5)' : 'linear-gradient(135deg, #8b5cf6, #ec4899)', color: 'white', fontSize: 16, fontWeight: 'bold', cursor: loading ? 'wait' : 'pointer', marginBottom: 16 }}
+          >
             {loading ? '...' : mode === 'login' ? 'Se connecter' : mode === 'signup' ? 'Créer mon compte' : 'Envoyer le lien'}
           </button>
         </form>
@@ -245,7 +207,9 @@ function LoginScreen() {
         <div style={{ textAlign: 'center' }}>
           {mode === 'login' && (
             <>
-              <button onClick={() => { setMode('reset'); setError(''); setMessage(''); }} style={{ background: 'none', border: 'none', color: '#a78bfa', fontSize: 14, cursor: 'pointer', marginBottom: 12, display: 'block', width: '100%' }}>Mot de passe oublié ?</button>
+              <button onClick={() => { setMode('reset'); setError(''); setMessage(''); }} style={{ background: 'none', border: 'none', color: '#a78bfa', fontSize: 14, cursor: 'pointer', marginBottom: 12, display: 'block', width: '100%' }}>
+                Mot de passe oublié ?
+              </button>
               <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, margin: 0 }}>
                 Pas de compte ? <button onClick={() => { setMode('signup'); setError(''); setMessage(''); }} style={{ background: 'none', border: 'none', color: '#a78bfa', fontSize: 14, cursor: 'pointer' }}>S'inscrire</button>
               </p>
@@ -257,7 +221,9 @@ function LoginScreen() {
             </p>
           )}
           {mode === 'reset' && (
-            <button onClick={() => { setMode('login'); setError(''); setMessage(''); }} style={{ background: 'none', border: 'none', color: '#a78bfa', fontSize: 14, cursor: 'pointer' }}>← Retour</button>
+            <button onClick={() => { setMode('login'); setError(''); setMessage(''); }} style={{ background: 'none', border: 'none', color: '#a78bfa', fontSize: 14, cursor: 'pointer' }}>
+              ← Retour
+            </button>
           )}
         </div>
       </div>
@@ -308,7 +274,6 @@ export default function CoachZen() {
     let isMounted = true;
 
     // 1. Check redirect result (for mobile Google auth)
-    checkRedirectResult().then(result => {
       console.log('[Auth] Redirect result:', result);
       if (!isMounted) return;
 
