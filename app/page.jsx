@@ -1,7 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { saveToFirebase, loadFromFirebase } from '../lib/firebase';
+import { 
+  saveToFirebase, 
+  loadFromFirebase, 
+  signInWithGoogle, 
+  signInWithEmail, 
+  signUpWithEmail, 
+  resetPassword, 
+  logOut, 
+  onAuthChange 
+} from '../lib/firebase';
 
 const formatDate = (d) => d.toISOString().split('T')[0];
 const getDayName = (d) => ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'][d.getDay()];
@@ -68,7 +77,6 @@ const calcTDEE = (bmr, act) => {
   return Math.round(bmr * (f[act] || 1.55));
 };
 
-// BADGES
 const BADGES = [
   { id: 'first_day', emoji: '🌱', name: 'Premier pas', desc: '1er jour complété', check: (stats) => stats.totalDays >= 1 },
   { id: 'week_streak', emoji: '🔥', name: 'Semaine de feu', desc: '7 jours streak', check: (stats) => stats.streak >= 7 },
@@ -108,7 +116,112 @@ const ECARTS = [
   { id: 'gros', emoji: '🍕', label: 'Gros', kcal: 1000, color: '#ef4444' },
 ];
 
+// LOGIN COMPONENT
+function LoginScreen({ onLogin }) {
+  const [mode, setMode] = useState('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+
+  const handleGoogle = async () => {
+    setLoading(true);
+    setError('');
+    const result = await signInWithGoogle();
+    if (!result.success) setError(result.error);
+    setLoading(false);
+  };
+
+  const handleEmail = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    
+    if (mode === 'login') {
+      const result = await signInWithEmail(email, password);
+      if (!result.success) setError(result.error);
+    } else if (mode === 'signup') {
+      const result = await signUpWithEmail(email, password);
+      if (!result.success) setError(result.error);
+    } else if (mode === 'reset') {
+      const result = await resetPassword(email);
+      if (result.success) {
+        setMessage('Email envoyé ! Vérifie ta boîte mail.');
+        setMode('login');
+      } else {
+        setError(result.error);
+      }
+    }
+    setLoading(false);
+  };
+
+  const container = { minHeight: '100dvh', background: '#0f172a', color: 'white', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 };
+
+  return (
+    <div style={container}>
+      <div style={{ maxWidth: 360, width: '100%' }}>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ width: 80, height: 80, borderRadius: 20, background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <span style={{ fontSize: 40 }}>🌿</span>
+          </div>
+          <h1 style={{ fontSize: 28, fontWeight: 'bold', margin: 0, background: 'linear-gradient(to right, #c4b5fd, #f9a8d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Coach Zen</h1>
+          <p style={{ color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>Ton coach nutrition personnel</p>
+        </div>
+
+        <button onClick={handleGoogle} disabled={loading} style={{ width: '100%', padding: 16, borderRadius: 12, border: '1px solid rgba(255,255,255,0.2)', background: 'white', color: '#333', fontSize: 16, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Continuer avec Google
+        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '20px 0' }}>
+          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.1)' }} />
+          <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>ou</span>
+          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.1)' }} />
+        </div>
+
+        <form onSubmit={handleEmail}>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" required style={{ width: '100%', padding: 14, borderRadius: 10, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 16, marginBottom: 12, boxSizing: 'border-box' }} />
+          
+          {mode !== 'reset' && (
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mot de passe" required minLength={6} style={{ width: '100%', padding: 14, borderRadius: 10, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 16, marginBottom: 12, boxSizing: 'border-box' }} />
+          )}
+
+          {error && <p style={{ color: '#ef4444', fontSize: 14, margin: '0 0 12px' }}>{error}</p>}
+          {message && <p style={{ color: '#22c55e', fontSize: 14, margin: '0 0 12px' }}>{message}</p>}
+
+          <button type="submit" disabled={loading} style={{ width: '100%', padding: 14, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', color: 'white', fontSize: 16, fontWeight: 'bold', cursor: 'pointer', marginBottom: 16 }}>
+            {loading ? '...' : mode === 'login' ? 'Se connecter' : mode === 'signup' ? 'Créer un compte' : 'Envoyer le lien'}
+          </button>
+        </form>
+
+        <div style={{ textAlign: 'center' }}>
+          {mode === 'login' && (
+            <>
+              <button onClick={() => setMode('reset')} style={{ background: 'none', border: 'none', color: '#a78bfa', fontSize: 14, cursor: 'pointer', marginBottom: 8 }}>Mot de passe oublié ?</button>
+              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, margin: 0 }}>
+                Pas de compte ? <button onClick={() => setMode('signup')} style={{ background: 'none', border: 'none', color: '#a78bfa', fontSize: 14, cursor: 'pointer' }}>S'inscrire</button>
+              </p>
+            </>
+          )}
+          {mode === 'signup' && (
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, margin: 0 }}>
+              Déjà un compte ? <button onClick={() => setMode('login')} style={{ background: 'none', border: 'none', color: '#a78bfa', fontSize: 14, cursor: 'pointer' }}>Se connecter</button>
+            </p>
+          )}
+          {mode === 'reset' && (
+            <button onClick={() => setMode('login')} style={{ background: 'none', border: 'none', color: '#a78bfa', fontSize: 14, cursor: 'pointer' }}>← Retour</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// MAIN APP
 export default function CoachZen() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
@@ -141,6 +254,15 @@ export default function CoachZen() {
 
   const realToday = useMemo(() => formatDate(new Date()), []);
   const isToday = selectedDate === realToday;
+
+  // Auth listener
+  useEffect(() => {
+    const unsubscribe = onAuthChange((firebaseUser) => {
+      setUser(firebaseUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Stats pour badges
   const stats = useMemo(() => {
@@ -203,78 +325,40 @@ export default function CoachZen() {
     saveLocal('cz_badges', newUnlocked);
   }, [stats, mounted]);
 
+  // Load data when user logs in
   useEffect(() => {
+    if (!user) return;
+    
     const loadAllData = async () => {
       const today = formatDate(new Date());
       setSelectedDate(today);
       
-      const localData = loadLocal('cz_data', {});
-      const localProfile = loadLocal('cz_profile', getDefaultProfile());
-      const localWeight = loadLocal('cz_weight', []);
-      
-      setAllData(localData);
-      setProfile(localProfile);
-      setWeightHistory(Array.isArray(localWeight) ? localWeight : []);
-      setDayData(localData[today] || getDefaultDay());
-      setMounted(true);
-      
-      // Request notification permission
-      if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
-      }
-      
       try {
         setSyncing(true);
         const [fbData, fbProfile, fbWeight] = await Promise.all([
-          loadFromFirebase('allData', localData),
-          loadFromFirebase('profile', localProfile),
-          loadFromFirebase('weightHistory', localWeight)
+          loadFromFirebase(user.uid, 'allData', {}),
+          loadFromFirebase(user.uid, 'profile', getDefaultProfile()),
+          loadFromFirebase(user.uid, 'weightHistory', [])
         ]);
         
-        setAllData(fbData || localData);
-        setProfile(fbProfile || localProfile);
-        setWeightHistory(Array.isArray(fbWeight) ? fbWeight : localWeight);
+        setAllData(fbData || {});
+        setProfile(fbProfile || getDefaultProfile());
+        setWeightHistory(Array.isArray(fbWeight) ? fbWeight : []);
         setDayData((fbData && fbData[today]) ? fbData[today] : getDefaultDay());
-        
-        saveLocal('cz_data', fbData || localData);
-        saveLocal('cz_profile', fbProfile || localProfile);
-        saveLocal('cz_weight', fbWeight || localWeight);
         setSyncing(false);
       } catch (e) {
         console.error('Firebase load error:', e);
         setSyncing(false);
       }
       
+      setMounted(true);
+      
       fetch('/api/coach/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ energy: 3, score: 0, slot: 'morning' }) })
         .then(r => r.json()).then(d => setCoachMessage(d.message || "Le plan commence.")).catch(() => setCoachMessage("Le plan commence."));
     };
+    
     loadAllData();
-  }, []);
-
-  // Rappels
-  useEffect(() => {
-    if (!mounted || typeof window === 'undefined') return;
-    
-    const checkReminders = () => {
-      const hour = new Date().getHours();
-      const today = formatDate(new Date());
-      const todayData = allData[today] || getDefaultDay();
-      
-      if ('Notification' in window && Notification.permission === 'granted') {
-        // Rappel hydratation à 14h si < 4 verres
-        if (hour === 14 && (todayData.water || 0) < 4) {
-          new Notification('💧 Coach Zen', { body: 'N\'oublie pas de boire ! Tu en es à ' + (todayData.water || 0) + ' verres.' });
-        }
-        // Rappel repas à 12h30 si déjeuner pas coché
-        if (hour === 12 && !todayData.habits?.lunch) {
-          new Notification('🥗 Coach Zen', { body: 'C\'est l\'heure du déjeuner !' });
-        }
-      }
-    };
-    
-    const interval = setInterval(checkReminders, 60 * 60 * 1000); // Check every hour
-    return () => clearInterval(interval);
-  }, [mounted, allData]);
+  }, [user]);
 
   useEffect(() => { 
     if (mounted && selectedDate) {
@@ -283,29 +367,34 @@ export default function CoachZen() {
   }, [selectedDate, mounted, allData]);
 
   useEffect(() => { 
-    if (!mounted || !selectedDate) return;
+    if (!mounted || !selectedDate || !user) return;
     const timer = setTimeout(() => {
       const newAll = { ...allData, [selectedDate]: dayData };
       setAllData(newAll);
-      saveLocal('cz_data', newAll);
-      saveToFirebase('allData', newAll);
+      saveToFirebase(user.uid, 'allData', newAll);
     }, 500);
     return () => clearTimeout(timer);
-  }, [dayData, mounted, selectedDate]);
+  }, [dayData, mounted, selectedDate, user]);
 
   useEffect(() => { 
-    if (mounted) {
-      saveLocal('cz_profile', profile);
-      saveToFirebase('profile', profile);
+    if (mounted && user) {
+      saveToFirebase(user.uid, 'profile', profile);
     }
-  }, [profile, mounted]);
+  }, [profile, mounted, user]);
   
   useEffect(() => { 
-    if (mounted) {
-      saveLocal('cz_weight', weightHistory);
-      saveToFirebase('weightHistory', weightHistory);
+    if (mounted && user) {
+      saveToFirebase(user.uid, 'weightHistory', weightHistory);
     }
-  }, [weightHistory, mounted]);
+  }, [weightHistory, mounted, user]);
+
+  const handleLogout = async () => {
+    await logOut();
+    setAllData({});
+    setProfile(getDefaultProfile());
+    setWeightHistory([]);
+    setMounted(false);
+  };
 
   const saveWeight = useCallback((w) => { 
     const today = formatDate(new Date()); 
@@ -314,15 +403,11 @@ export default function CoachZen() {
     setShowWeightModal(false); 
   }, []);
 
-  // Photo analysis
   const handleImageUpload = useCallback((e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setFoodImage(reader.result);
-    };
+    reader.onloadend = () => setFoodImage(reader.result);
     reader.readAsDataURL(file);
   }, []);
 
@@ -330,11 +415,7 @@ export default function CoachZen() {
     if (!foodDescription.trim() && !foodImage) return;
     setFoodLoading(true); setFoodResult(null);
     try {
-      const res = await fetch('/api/coach/food', { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ description: foodDescription, image: foodImage }) 
-      });
+      const res = await fetch('/api/coach/food', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description: foodDescription, image: foodImage }) });
       const data = await res.json();
       setFoodResult(data);
     } catch { setFoodResult({ success: false, error: "Erreur" }); }
@@ -352,18 +433,13 @@ export default function CoachZen() {
   const fetchAnalysis = useCallback(async (period) => {
     setAnalysisLoading(true); setAnalysisPeriod(period);
     try { 
-      const res = await fetch('/api/coach/analyze', { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ allData, profile, period, weightHistory, stats }) 
-      }); 
+      const res = await fetch('/api/coach/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ allData, profile, period, weightHistory, stats }) }); 
       const data = await res.json(); 
       setAnalysis(data.analysis || 'Analyse indisponible.'); 
     } catch { setAnalysis("Erreur."); }
     setAnalysisLoading(false);
   }, [allData, profile, weightHistory, stats]);
 
-  // Voice Coach
   const sendVoiceMessage = useCallback(async (text) => {
     if (!text.trim()) return;
     const userMsg = { role: 'user', content: text };
@@ -375,15 +451,7 @@ export default function CoachZen() {
       const res = await fetch('/api/coach/voice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message: text, 
-          allData, 
-          profile, 
-          weightHistory,
-          stats,
-          todayData: dayData,
-          history: voiceMessages.slice(-10)
-        })
+        body: JSON.stringify({ message: text, allData, profile, weightHistory, stats, todayData: dayData, history: voiceMessages.slice(-10) })
       });
       const data = await res.json();
       setVoiceMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
@@ -391,10 +459,9 @@ export default function CoachZen() {
       if ('speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(data.response);
         utterance.lang = 'fr-FR';
-        utterance.rate = 1;
         speechSynthesis.speak(utterance);
       }
-    } catch (e) {
+    } catch {
       setVoiceMessages(prev => [...prev, { role: 'assistant', content: "Désolé, je n'ai pas pu répondre." }]);
     }
     setVoiceLoading(false);
@@ -402,23 +469,16 @@ export default function CoachZen() {
 
   const startListening = useCallback(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('La reconnaissance vocale n\'est pas supportée sur ce navigateur.');
+      alert('Reconnaissance vocale non supportée.');
       return;
     }
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = 'fr-FR';
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    
     recognition.onstart = () => setIsListening(true);
     recognition.onend = () => setIsListening(false);
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      sendVoiceMessage(transcript);
-    };
+    recognition.onresult = (event) => sendVoiceMessage(event.results[0][0].transcript);
     recognition.onerror = () => setIsListening(false);
-    
     recognition.start();
   }, [sendVoiceMessage]);
 
@@ -434,25 +494,16 @@ export default function CoachZen() {
     if (!weightHistory.length || !profile.objectifPoids) return null;
     const sorted = [...weightHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
     if (sorted.length < 2) return null;
-    
     const recent = sorted.slice(-14);
-    const first = recent[0];
-    const last = recent[recent.length - 1];
+    const first = recent[0], last = recent[recent.length - 1];
     const daysDiff = (new Date(last.date) - new Date(first.date)) / (1000 * 60 * 60 * 24);
     if (daysDiff < 7) return null;
-    
-    const weightLoss = first.weight - last.weight;
-    const lossPerDay = weightLoss / daysDiff;
-    
-    if (lossPerDay <= 0) return { message: "Phase de maintien ou prise", date: null };
-    
+    const lossPerDay = (first.weight - last.weight) / daysDiff;
+    if (lossPerDay <= 0) return { message: "Phase de maintien", date: null };
     const remaining = last.weight - profile.objectifPoids;
     if (remaining <= 0) return { message: "🎉 Objectif atteint !", date: null };
-    
-    const daysToGoal = Math.ceil(remaining / lossPerDay);
     const goalDate = new Date();
-    goalDate.setDate(goalDate.getDate() + daysToGoal);
-    
+    goalDate.setDate(goalDate.getDate() + Math.ceil(remaining / lossPerDay));
     return { message: `${(lossPerDay * 7).toFixed(1)} kg/sem`, date: goalDate };
   }, [weightHistory, profile.objectifPoids]);
 
@@ -475,11 +526,9 @@ export default function CoachZen() {
 
   const streak = stats.streak;
   const last14Days = useMemo(() => { const days = []; for (let i = 13; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); days.push(d); } return days; }, []);
-  const last7Days = useMemo(() => { const days = []; for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const k = formatDate(d); days.push({ date: k, score: allData?.[k] ? calcScore(allData[k]) : 0, label: d.getDate().toString() }); } return days; }, [allData]);
   const monthAvg = useMemo(() => { const vals = Object.values(allData || {}); const scores = vals.slice(-30).map(d => calcScore(d)).filter(s => s > 0); return scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0; }, [allData]);
   const totalDays = stats.totalDays;
   const selectedDateObj = useMemo(() => selectedDate ? new Date(selectedDate + 'T12:00:00') : new Date(), [selectedDate]);
-
   const weightChartData = useMemo(() => {
     const sorted = [...weightHistory].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(-30);
     if (!sorted.length) return [];
@@ -492,7 +541,20 @@ export default function CoachZen() {
   const content = { maxWidth: 500, margin: '0 auto', padding: '12px 16px 20px' };
   const card = { background: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 14, marginBottom: 12, border: '1px solid rgba(255,255,255,0.1)' };
 
-  if (!mounted) return <div style={container}><div style={content}><p style={{ textAlign: 'center', paddingTop: 100 }}>Chargement...</p></div></div>;
+  // Show loading
+  if (authLoading) {
+    return <div style={container}><div style={content}><p style={{ textAlign: 'center', paddingTop: 100 }}>Chargement...</p></div></div>;
+  }
+
+  // Show login if not authenticated
+  if (!user) {
+    return <LoginScreen />;
+  }
+
+  // Show loading data
+  if (!mounted) {
+    return <div style={container}><div style={content}><p style={{ textAlign: 'center', paddingTop: 100 }}>Chargement des données...</p></div></div>;
+  }
 
   return (
     <div style={container}>
@@ -508,8 +570,8 @@ export default function CoachZen() {
               <span style={{ fontSize: 14 }}>🏆</span>
               {unlockedBadges.length > 0 && <span style={{ position: 'absolute', top: -4, right: -4, background: '#22c55e', color: 'white', fontSize: 10, width: 16, height: 16, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unlockedBadges.length}</span>}
             </button>
-            <button onClick={() => setShowVoiceCoach(true)} style={{ background: 'linear-gradient(135deg, #06b6d4, #0891b2)', border: 'none', borderRadius: 10, padding: '8px 12px', cursor: 'pointer' }}><span style={{ color: 'white', fontSize: 14 }}>🎙️</span></button>
-            <button onClick={() => { setShowAnalysis(true); fetchAnalysis('week'); }} style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', border: 'none', borderRadius: 10, padding: '8px 12px', cursor: 'pointer' }}><span style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>🤖</span></button>
+            <button onClick={() => setShowVoiceCoach(true)} style={{ background: 'linear-gradient(135deg, #06b6d4, #0891b2)', border: 'none', borderRadius: 10, padding: '8px 12px', cursor: 'pointer' }}><span style={{ fontSize: 14 }}>🎙️</span></button>
+            <button onClick={() => { setShowAnalysis(true); fetchAnalysis('week'); }} style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', border: 'none', borderRadius: 10, padding: '8px 12px', cursor: 'pointer' }}><span style={{ fontSize: 12, fontWeight: 'bold' }}>🤖</span></button>
           </div>
         </header>
 
@@ -525,8 +587,8 @@ export default function CoachZen() {
               <div style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', padding: 2, borderRadius: 16, marginBottom: 12 }}>
                 <div style={{ background: 'rgba(15,23,42,0.95)', borderRadius: 14, padding: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><span style={{ color: 'white', fontWeight: 'bold', fontSize: 14 }}>Z</span></div>
-                    <p style={{ flex: 1, fontSize: 14, color: 'white', margin: 0, lineHeight: 1.5 }}>{coachMessage}</p>
+                    <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><span style={{ fontWeight: 'bold', fontSize: 14 }}>Z</span></div>
+                    <p style={{ flex: 1, fontSize: 14, margin: 0, lineHeight: 1.5 }}>{coachMessage}</p>
                     <button onClick={() => setCoachMessage(null)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 18, padding: 0 }}>×</button>
                   </div>
                 </div>
@@ -535,7 +597,7 @@ export default function CoachZen() {
 
             <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16 }}>
               <div><h2 style={{ fontSize: 16, fontWeight: 'bold', margin: 0 }}>Score</h2><p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, margin: '4px 0' }}>{score >= 80 ? '🔥 On fire!' : score >= 60 ? '💪 Solide' : score >= 40 ? '👍 En route' : '🌱 Ça pousse'}</p></div>
-              <div style={{ width: 80, height: 80, borderRadius: 40, border: '6px solid #8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 28, fontWeight: 'bold', color: 'white' }}>{score}</span></div>
+              <div style={{ width: 80, height: 80, borderRadius: 40, border: '6px solid #8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 28, fontWeight: 'bold' }}>{score}</span></div>
             </div>
 
             <div style={card}>
@@ -544,136 +606,106 @@ export default function CoachZen() {
               <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: '8px 0 0', textAlign: 'center' }}>{(tdee - totalKcal) > 0 ? `📉 Déficit: −${tdee - totalKcal} kcal` : `📈 Surplus: +${Math.abs(tdee - totalKcal)} kcal`}</p>
             </div>
 
-            {/* HYDRATATION */}
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(6,182,212,0.1), rgba(8,145,178,0.1))', border: '1px solid rgba(6,182,212,0.2)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <div><p style={{ fontSize: 14, fontWeight: 'bold', color: 'white', margin: 0 }}>💧 Hydratation</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>+10 pts si ≥ 8 verres</p></div>
+                <div><p style={{ fontSize: 14, fontWeight: 'bold', margin: 0 }}>💧 Hydratation</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>+10 pts si ≥ 8</p></div>
                 <span style={{ fontSize: 18, fontWeight: 'bold', color: (dayData.water || 0) >= 8 ? '#22c55e' : 'white' }}>{dayData.water || 0}/8</span>
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {[...Array(8)].map((_, i) => (
-                  <button key={i} onClick={() => setDayData(p => ({ ...p, water: i + 1 }))} style={{ width: 36, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer', background: i < (dayData.water || 0) ? '#06b6d4' : 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <button key={i} onClick={() => setDayData(p => ({ ...p, water: i + 1 }))} style={{ width: 36, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer', background: i < (dayData.water || 0) ? '#06b6d4' : 'rgba(255,255,255,0.1)' }}>
                     <span style={{ fontSize: 16 }}>{i < (dayData.water || 0) ? '💧' : '○'}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* SUPPLEMENTS */}
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(168,85,247,0.1), rgba(139,92,246,0.1))', border: '1px solid rgba(168,85,247,0.2)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <div><p style={{ fontSize: 14, fontWeight: 'bold', color: 'white', margin: 0 }}>💊 Compléments</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>+5 pts si ≥ 3 pris</p></div>
+                <div><p style={{ fontSize: 14, fontWeight: 'bold', margin: 0 }}>💊 Compléments</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>+5 pts si ≥ 3</p></div>
                 <span style={{ fontSize: 14, fontWeight: 'bold', color: getSupplementsCount(dayData.supplements) >= 3 ? '#22c55e' : 'white' }}>{getSupplementsCount(dayData.supplements)}/6</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                {SUPPLEMENTS.map(s => {
-                  const taken = dayData.supplements?.[s.id];
-                  return (
-                    <button key={s.id} onClick={() => updateSupplement(s.id, !taken)} style={{ padding: 10, borderRadius: 10, border: 'none', cursor: 'pointer', background: taken ? '#8b5cf6' : 'rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                      <span style={{ fontSize: 18 }}>{s.emoji}</span>
-                      <span style={{ fontSize: 10, color: taken ? 'white' : 'rgba(255,255,255,0.5)' }}>{s.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* MEALS */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-              <button onClick={() => updateHabit('breakfast', !dayData?.habits?.breakfast)} style={{ flex: 1, padding: 2, borderRadius: 14, background: `linear-gradient(135deg, ${MEALS.breakfast.colors[0]}, ${MEALS.breakfast.colors[1]})`, border: 'none', cursor: 'pointer' }}>
-                <div style={{ background: dayData?.habits?.breakfast ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.95)', borderRadius: 12, padding: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{dayData?.habits?.breakfast ? '✓' : MEALS.breakfast.emoji}</div>
-                    <div style={{ flex: 1, textAlign: 'left' }}><p style={{ fontSize: 13, fontWeight: 'bold', color: 'white', margin: 0 }}>{MEALS.breakfast.title}</p><p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{MEALS.breakfast.kcal} kcal</p></div>
-                  </div>
-                </div>
-              </button>
-              <button onClick={() => updateHabit('fasting', !dayData?.habits?.fasting)} style={{ flex: 1, padding: 2, borderRadius: 14, background: `linear-gradient(135deg, ${MEALS.fasting.colors[0]}, ${MEALS.fasting.colors[1]})`, border: 'none', cursor: 'pointer' }}>
-                <div style={{ background: dayData?.habits?.fasting ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.95)', borderRadius: 12, padding: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{dayData?.habits?.fasting ? '✓' : MEALS.fasting.emoji}</div>
-                    <div style={{ flex: 1, textAlign: 'left' }}><p style={{ fontSize: 13, fontWeight: 'bold', color: 'white', margin: 0 }}>{MEALS.fasting.title}</p><p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: 0 }}>0 kcal</p></div>
-                  </div>
-                </div>
-              </button>
-            </div>
-
-            {Object.entries(MEALS).filter(([k]) => k !== 'breakfast' && k !== 'fasting').map(([k, m]) => {
-              const checked = dayData?.habits?.[k];
-              return (
-                <button key={k} onClick={() => updateHabit(k, !checked)} style={{ width: '100%', padding: 3, borderRadius: 18, background: `linear-gradient(135deg, ${m.colors[0]}, ${m.colors[1]})`, border: 'none', cursor: 'pointer', marginBottom: 10 }}>
-                  <div style={{ background: checked ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.95)', borderRadius: 15, padding: 14 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>{checked ? '✓' : m.emoji}</div>
-                      <div style={{ flex: 1, textAlign: 'left' }}><p style={{ fontSize: 16, fontWeight: 'bold', color: 'white', margin: 0 }}>{m.title}</p><p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{m.time} • {m.kcal} kcal</p></div>
-                      <div style={{ padding: '6px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.1)' }}><span style={{ fontSize: 14, fontWeight: 'bold', color: 'white' }}>{checked ? '✓' : '+20'}</span></div>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-
-            {/* REPAS LIBRES */}
-            <div style={{ ...card, background: 'linear-gradient(135deg, rgba(34,197,94,0.1), rgba(16,185,129,0.1))', border: '1px solid rgba(34,197,94,0.2)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <div><p style={{ fontSize: 14, fontWeight: 'bold', color: 'white', margin: 0 }}>🥗 Repas libres</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>📷 Photo ou texte</p></div>
-                <button onClick={() => setShowFoodModal(true)} style={{ background: 'linear-gradient(135deg, #22c55e, #10b981)', border: 'none', borderRadius: 10, padding: '8px 14px', cursor: 'pointer' }}><span style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>+ Ajouter</span></button>
-              </div>
-              {dayData.customMeals && dayData.customMeals.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {dayData.customMeals.map(meal => (
-                    <div key={meal.id} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 12 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ fontSize: 16 }}>{meal.isHealthy ? '✅' : '⚠️'}</span><span style={{ fontSize: 14, fontWeight: 'bold', color: 'white' }}>{meal.name}</span></div>
-                          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0' }}>{meal.details}</p>
-                          <div style={{ display: 'flex', gap: 12, marginTop: 6 }}><span style={{ fontSize: 12, color: '#22c55e' }}>{meal.kcal} kcal</span><span style={{ fontSize: 12, color: meal.points >= 10 ? '#22c55e' : '#f59e0b' }}>+{meal.points} pts</span></div>
-                        </div>
-                        <button onClick={() => removeCustomMeal(meal.id)} style={{ background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 6, width: 28, height: 28, cursor: 'pointer', color: '#ef4444', fontSize: 14 }}>×</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'center', margin: 0 }}>Aucun repas libre ajouté</p>
-              )}
-            </div>
-
-            {/* ECARTS */}
-            <div style={{ ...card, background: 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(249,115,22,0.1))', border: '1px solid rgba(239,68,68,0.2)' }}>
-              <p style={{ fontSize: 14, fontWeight: 'bold', color: 'white', margin: '0 0 12px' }}>🍔 Écarts (-10 pts)</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                {ECARTS.map(e => {
-                  const count = dayData?.ecarts?.[e.id] || 0;
-                  return (
-                    <div key={e.id} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 10, textAlign: 'center' }}>
-                      <span style={{ fontSize: 24 }}>{e.emoji}</span>
-                      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '4px 0' }}>{e.kcal} kcal</p>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                        <button onClick={() => setDayData(p => ({ ...p, ecarts: { ...(p.ecarts || {}), [e.id]: Math.max(0, count - 1) } }))} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 16, cursor: 'pointer' }}>−</button>
-                        <span style={{ fontSize: 18, fontWeight: 'bold', color: count > 0 ? e.color : 'white' }}>{count}</span>
-                        <button onClick={() => setDayData(p => ({ ...p, ecarts: { ...(p.ecarts || {}), [e.id]: count + 1 } }))} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: `${e.color}40`, color: 'white', fontSize: 16, cursor: 'pointer' }}>+</button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* GRATITUDES */}
-            <div style={{ ...card, background: 'linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.1))', border: '1px solid rgba(251,191,36,0.2)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <div><p style={{ fontSize: 14, fontWeight: 'bold', color: 'white', margin: 0 }}>🙏 Gratitudes</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>+5 pts si 3 remplies</p></div>
-                <span style={{ fontSize: 14, color: (dayData.gratitudes || []).filter(g => g?.trim()).length >= 3 ? '#22c55e' : 'rgba(255,255,255,0.5)' }}>{(dayData.gratitudes || []).filter(g => g?.trim()).length}/3</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {[0, 1, 2].map(i => (
-                  <input key={i} value={dayData.gratitudes?.[i] || ''} onChange={e => updateGratitude(i, e.target.value)} placeholder={`${i + 1}. Je suis reconnaissant pour...`} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 13, boxSizing: 'border-box' }} />
+                {SUPPLEMENTS.map(s => (
+                  <button key={s.id} onClick={() => updateSupplement(s.id, !dayData.supplements?.[s.id])} style={{ padding: 10, borderRadius: 10, border: 'none', cursor: 'pointer', background: dayData.supplements?.[s.id] ? '#8b5cf6' : 'rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 18 }}>{s.emoji}</span>
+                    <span style={{ fontSize: 10, color: dayData.supplements?.[s.id] ? 'white' : 'rgba(255,255,255,0.5)' }}>{s.name}</span>
+                  </button>
                 ))}
               </div>
             </div>
 
-            {/* ENERGY */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              {['breakfast', 'fasting'].map(k => (
+                <button key={k} onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ flex: 1, padding: 2, borderRadius: 14, background: `linear-gradient(135deg, ${MEALS[k].colors[0]}, ${MEALS[k].colors[1]})`, border: 'none', cursor: 'pointer' }}>
+                  <div style={{ background: dayData?.habits?.[k] ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.95)', borderRadius: 12, padding: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{dayData?.habits?.[k] ? '✓' : MEALS[k].emoji}</div>
+                      <div style={{ flex: 1, textAlign: 'left' }}><p style={{ fontSize: 13, fontWeight: 'bold', margin: 0 }}>{MEALS[k].title}</p><p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{MEALS[k].kcal} kcal</p></div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {Object.entries(MEALS).filter(([k]) => !['breakfast', 'fasting'].includes(k)).map(([k, m]) => (
+              <button key={k} onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ width: '100%', padding: 3, borderRadius: 18, background: `linear-gradient(135deg, ${m.colors[0]}, ${m.colors[1]})`, border: 'none', cursor: 'pointer', marginBottom: 10 }}>
+                <div style={{ background: dayData?.habits?.[k] ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.95)', borderRadius: 15, padding: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>{dayData?.habits?.[k] ? '✓' : m.emoji}</div>
+                    <div style={{ flex: 1, textAlign: 'left' }}><p style={{ fontSize: 16, fontWeight: 'bold', margin: 0 }}>{m.title}</p><p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{m.time} • {m.kcal} kcal</p></div>
+                    <div style={{ padding: '6px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.1)' }}><span style={{ fontSize: 14, fontWeight: 'bold' }}>{dayData?.habits?.[k] ? '✓' : '+20'}</span></div>
+                  </div>
+                </div>
+              </button>
+            ))}
+
+            <div style={{ ...card, background: 'linear-gradient(135deg, rgba(34,197,94,0.1), rgba(16,185,129,0.1))', border: '1px solid rgba(34,197,94,0.2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div><p style={{ fontSize: 14, fontWeight: 'bold', margin: 0 }}>🥗 Repas libres</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>📷 Photo ou texte</p></div>
+                <button onClick={() => setShowFoodModal(true)} style={{ background: 'linear-gradient(135deg, #22c55e, #10b981)', border: 'none', borderRadius: 10, padding: '8px 14px', cursor: 'pointer' }}><span style={{ fontSize: 12, fontWeight: 'bold' }}>+ Ajouter</span></button>
+              </div>
+              {dayData.customMeals?.length > 0 ? dayData.customMeals.map(meal => (
+                <div key={meal.id} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 12, marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span>{meal.isHealthy ? '✅' : '⚠️'}</span><span style={{ fontWeight: 'bold' }}>{meal.name}</span></div>
+                      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0' }}>{meal.details}</p>
+                      <div style={{ display: 'flex', gap: 12, marginTop: 6 }}><span style={{ fontSize: 12, color: '#22c55e' }}>{meal.kcal} kcal</span><span style={{ fontSize: 12, color: meal.points >= 10 ? '#22c55e' : '#f59e0b' }}>+{meal.points} pts</span></div>
+                    </div>
+                    <button onClick={() => removeCustomMeal(meal.id)} style={{ background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 6, width: 28, height: 28, cursor: 'pointer', color: '#ef4444' }}>×</button>
+                  </div>
+                </div>
+              )) : <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'center', margin: 0 }}>Aucun repas libre</p>}
+            </div>
+
+            <div style={{ ...card, background: 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(249,115,22,0.1))', border: '1px solid rgba(239,68,68,0.2)' }}>
+              <p style={{ fontSize: 14, fontWeight: 'bold', margin: '0 0 12px' }}>🍔 Écarts (-10 pts)</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                {ECARTS.map(e => (
+                  <div key={e.id} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 10, textAlign: 'center' }}>
+                    <span style={{ fontSize: 24 }}>{e.emoji}</span>
+                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '4px 0' }}>{e.kcal} kcal</p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                      <button onClick={() => setDayData(p => ({ ...p, ecarts: { ...(p.ecarts || {}), [e.id]: Math.max(0, (p.ecarts?.[e.id] || 0) - 1) } }))} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 16, cursor: 'pointer' }}>−</button>
+                      <span style={{ fontSize: 18, fontWeight: 'bold', color: (dayData.ecarts?.[e.id] || 0) > 0 ? e.color : 'white' }}>{dayData.ecarts?.[e.id] || 0}</span>
+                      <button onClick={() => setDayData(p => ({ ...p, ecarts: { ...(p.ecarts || {}), [e.id]: (p.ecarts?.[e.id] || 0) + 1 } }))} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: `${e.color}40`, color: 'white', fontSize: 16, cursor: 'pointer' }}>+</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ ...card, background: 'linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.1))', border: '1px solid rgba(251,191,36,0.2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div><p style={{ fontSize: 14, fontWeight: 'bold', margin: 0 }}>🙏 Gratitudes</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>+5 pts si 3 remplies</p></div>
+                <span style={{ fontSize: 14, color: (dayData.gratitudes || []).filter(g => g?.trim()).length >= 3 ? '#22c55e' : 'rgba(255,255,255,0.5)' }}>{(dayData.gratitudes || []).filter(g => g?.trim()).length}/3</span>
+              </div>
+              {[0, 1, 2].map(i => (
+                <input key={i} value={dayData.gratitudes?.[i] || ''} onChange={e => updateGratitude(i, e.target.value)} placeholder={`${i + 1}. Je suis reconnaissant pour...`} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 16, marginBottom: 8, boxSizing: 'border-box' }} />
+              ))}
+            </div>
+
             <div style={card}>
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 10 }}>⚡ Énergie</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
@@ -683,28 +715,26 @@ export default function CoachZen() {
               </div>
             </div>
 
-            {/* SLEEP */}
             <div style={card}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ color: 'rgba(255,255,255,0.6)' }}>🌙 Sommeil</span><span style={{ fontWeight: 'bold' }}>{dayData.sleep || 7}h</span></div>
               <input type="range" min={0} max={9} step={0.5} value={dayData.sleep || 7} onChange={e => setDayData(p => ({ ...p, sleep: Number(e.target.value) }))} style={{ width: '100%' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, marginTop: 14 }}><span style={{ color: 'rgba(255,255,255,0.6)' }}>☀️ Sieste</span><span style={{ fontWeight: 'bold' }}>{dayData.nap || 0} min</span></div>
-              <input type="range" min={0} max={120} step={15} value={dayData.nap || 0} onChange={e => setDayData(p => ({ ...p, nap: Number(e.target.value) }))} style={{ width: '100%' }} />
             </div>
 
-            {/* MOVEMENT */}
             <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginBottom: 8 }}>🏃 Activité (+5 pts)</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
-              {[{ key: 'workout', emoji: '🏋️', label: 'Muscu', color: '#ec4899' }, { key: 'run', emoji: '🏃', label: 'Course', color: '#f59e0b' }, { key: 'walk', emoji: '🚶', label: 'Marche', color: '#06b6d4' }].map(m => {
-                const active = dayData?.movement?.[m.key];
-                return <button key={m.key} onClick={() => updateMovement(m.key, !active)} style={{ padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: active ? m.color : 'rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}><span style={{ fontSize: 24 }}>{m.emoji}</span><span style={{ color: active ? 'white' : 'rgba(255,255,255,0.5)', fontSize: 12 }}>{m.label}</span></button>;
-              })}
+              {[{ key: 'workout', emoji: '🏋️', label: 'Muscu', color: '#ec4899' }, { key: 'run', emoji: '🏃', label: 'Course', color: '#f59e0b' }, { key: 'walk', emoji: '🚶', label: 'Marche', color: '#06b6d4' }].map(m => (
+                <button key={m.key} onClick={() => updateMovement(m.key, !dayData.movement?.[m.key])} style={{ padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: dayData.movement?.[m.key] ? m.color : 'rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: 24 }}>{m.emoji}</span>
+                  <span style={{ color: dayData.movement?.[m.key] ? 'white' : 'rgba(255,255,255,0.5)', fontSize: 12 }}>{m.label}</span>
+                </button>
+              ))}
             </div>
           </>
         )}
 
         {tab === 'week' && (
           <>
-            <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 14, color: 'white' }}>Semaine</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 14 }}>Semaine</h1>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
               <div style={{ background: '#8b5cf6', borderRadius: 16, padding: 16, textAlign: 'center' }}><p style={{ fontSize: 32, fontWeight: 'bold', margin: 0 }}>{streak}</p><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>🔥 streak</p></div>
               <div style={{ background: '#06b6d4', borderRadius: 16, padding: 16, textAlign: 'center' }}><p style={{ fontSize: 32, fontWeight: 'bold', margin: 0 }}>{monthAvg}</p><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>moy/30j</p></div>
@@ -715,8 +745,8 @@ export default function CoachZen() {
                 {last14Days.map((d, i) => { const k = formatDate(d); const data = allData?.[k]; const s = data ? calcScore(data) : 0; return (
                   <button key={i} onClick={() => { setSelectedDate(k); setTab('today'); }} style={{ textAlign: 'center', padding: 6, borderRadius: 10, background: k === selectedDate ? '#8b5cf6' : 'transparent', border: 'none', cursor: 'pointer' }}>
                     <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', margin: 0 }}>{getDayName(d)}</p>
-                    <p style={{ fontSize: 12, margin: '3px 0', color: 'white' }}>{d.getDate()}</p>
-                    <div style={{ width: 26, height: 26, margin: '0 auto', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 'bold', background: !data ? 'rgba(255,255,255,0.05)' : s >= 80 ? '#10b981' : s >= 50 ? '#f59e0b' : '#ef4444', color: 'white' }}>{data ? s : '–'}</div>
+                    <p style={{ fontSize: 12, margin: '3px 0' }}>{d.getDate()}</p>
+                    <div style={{ width: 26, height: 26, margin: '0 auto', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 'bold', background: !data ? 'rgba(255,255,255,0.05)' : s >= 80 ? '#10b981' : s >= 50 ? '#f59e0b' : '#ef4444' }}>{data ? s : '–'}</div>
                   </button>
                 ); })}
               </div>
@@ -726,7 +756,7 @@ export default function CoachZen() {
 
         {tab === 'plan' && (
           <>
-            <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 14, color: 'white' }}>Mon Plan</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 14 }}>Mon Plan</h1>
             <div style={card}><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, margin: 0 }}>Total: <strong style={{ color: '#10b981' }}>2650 kcal</strong> • TDEE: <strong style={{ color: '#06b6d4' }}>{tdee} kcal</strong></p></div>
             {Object.entries(MEALS).filter(([k]) => k !== 'fasting').map(([k, m]) => (
               <div key={k} style={{ background: `linear-gradient(135deg, ${m.colors[0]}, ${m.colors[1]})`, borderRadius: 16, padding: 14, marginBottom: 10 }}>
@@ -745,14 +775,28 @@ export default function CoachZen() {
 
         {tab === 'stats' && (
           <>
-            <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 14, color: 'white' }}>Profil</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 14 }}>Profil</h1>
+            
+            {/* User info */}
+            <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 20, background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: 18 }}>{user?.displayName?.[0] || user?.email?.[0] || '?'}</span>
+                </div>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 'bold', margin: 0 }}>{user?.displayName || 'Utilisateur'}</p>
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{user?.email}</p>
+                </div>
+              </div>
+              <button onClick={handleLogout} style={{ background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 8, padding: '8px 12px', cursor: 'pointer', color: '#ef4444', fontSize: 12 }}>Déconnexion</button>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
               <div style={{ background: '#10b981', borderRadius: 14, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 26, fontWeight: 'bold', margin: 0 }}>{totalDays}</p><p style={{ fontSize: 11, margin: 0, opacity: 0.8 }}>jours</p></div>
               <div style={{ background: '#8b5cf6', borderRadius: 14, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 26, fontWeight: 'bold', margin: 0 }}>{streak}</p><p style={{ fontSize: 11, margin: 0, opacity: 0.8 }}>🔥 streak</p></div>
               <div style={{ background: '#f59e0b', borderRadius: 14, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 26, fontWeight: 'bold', margin: 0 }}>{monthAvg}</p><p style={{ fontSize: 11, margin: 0, opacity: 0.8 }}>moy</p></div>
             </div>
 
-            {/* OBJECTIF */}
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(236,72,153,0.1))', border: '1px solid rgba(139,92,246,0.2)' }}>
               <p style={{ fontSize: 12, fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>🎯 OBJECTIF</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
@@ -760,36 +804,29 @@ export default function CoachZen() {
                 <span style={{ fontSize: 24, color: 'rgba(255,255,255,0.3)' }}>→</span>
                 <div style={{ flex: 1, textAlign: 'right' }}><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>Objectif</p><p style={{ fontSize: 28, fontWeight: 'bold', margin: 0, color: '#22c55e' }}>{profile.objectifPoids} kg</p></div>
               </div>
-              {prediction && prediction.date && (
-                <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: 10 }}>
-                  <p style={{ fontSize: 12, color: '#22c55e', margin: 0 }}>📈 {prediction.message} → {prediction.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</p>
-                </div>
-              )}
+              {prediction?.date && <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: 10 }}><p style={{ fontSize: 12, color: '#22c55e', margin: 0 }}>📈 {prediction.message} → {prediction.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</p></div>}
             </div>
 
-            {/* GRAPH */}
             {weightChartData.length > 1 && (
               <div style={card}>
                 <p style={{ fontSize: 12, fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>📊 ÉVOLUTION</p>
                 <div style={{ height: 100, display: 'flex', alignItems: 'flex-end', gap: 2 }}>
                   {weightChartData.map((w, i) => (
-                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <div style={{ width: '100%', height: `${w.percent}%`, minHeight: 4, background: 'linear-gradient(180deg, #8b5cf6, #ec4899)', borderRadius: 2 }} />
-                    </div>
+                    <div key={i} style={{ flex: 1, height: `${w.percent}%`, minHeight: 4, background: 'linear-gradient(180deg, #8b5cf6, #ec4899)', borderRadius: 2 }} />
                   ))}
                 </div>
               </div>
             )}
 
-            <button onClick={() => { setModalWeight(profile.poids); setShowWeightModal(true); }} style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: '#06b6d4', marginBottom: 14 }}><span style={{ color: 'white', fontSize: 14, fontWeight: 'bold' }}>⚖️ Enregistrer poids</span></button>
+            <button onClick={() => { setModalWeight(profile.poids); setShowWeightModal(true); }} style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: '#06b6d4', marginBottom: 14 }}><span style={{ fontSize: 14, fontWeight: 'bold' }}>⚖️ Enregistrer poids</span></button>
 
             <div style={card}>
               <p style={{ fontSize: 12, fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>⚙️ PROFIL</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div><label style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Poids</label><input type="number" value={profile.poids} onChange={e => setProfile(p => ({ ...p, poids: Number(e.target.value) || 75 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', marginTop: 4, boxSizing: 'border-box' }} /></div>
-                <div><label style={{ fontSize: 11, color: '#22c55e' }}>🎯 Objectif</label><input type="number" value={profile.objectifPoids} onChange={e => setProfile(p => ({ ...p, objectifPoids: Number(e.target.value) || 70 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(34,197,94,0.2)', color: '#22c55e', marginTop: 4, boxSizing: 'border-box' }} /></div>
-                <div><label style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Taille</label><input type="number" value={profile.taille} onChange={e => setProfile(p => ({ ...p, taille: Number(e.target.value) || 175 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', marginTop: 4, boxSizing: 'border-box' }} /></div>
-                <div><label style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Âge</label><input type="number" value={profile.age} onChange={e => setProfile(p => ({ ...p, age: Number(e.target.value) || 30 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', marginTop: 4, boxSizing: 'border-box' }} /></div>
+                <div><label style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Poids</label><input type="number" value={profile.poids} onChange={e => setProfile(p => ({ ...p, poids: Number(e.target.value) || 75 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', marginTop: 4, boxSizing: 'border-box', fontSize: 16 }} /></div>
+                <div><label style={{ fontSize: 11, color: '#22c55e' }}>🎯 Objectif</label><input type="number" value={profile.objectifPoids} onChange={e => setProfile(p => ({ ...p, objectifPoids: Number(e.target.value) || 70 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(34,197,94,0.2)', color: '#22c55e', marginTop: 4, boxSizing: 'border-box', fontSize: 16 }} /></div>
+                <div><label style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Taille</label><input type="number" value={profile.taille} onChange={e => setProfile(p => ({ ...p, taille: Number(e.target.value) || 175 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', marginTop: 4, boxSizing: 'border-box', fontSize: 16 }} /></div>
+                <div><label style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Âge</label><input type="number" value={profile.age} onChange={e => setProfile(p => ({ ...p, age: Number(e.target.value) || 30 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', marginTop: 4, boxSizing: 'border-box', fontSize: 16 }} /></div>
               </div>
             </div>
           </>
@@ -809,7 +846,7 @@ export default function CoachZen() {
             <h2 style={{ fontSize: 20, fontWeight: 'bold', margin: '0 0 16px', textAlign: 'center' }}>⚖️ Pesée</h2>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 20 }}>
               <button onClick={() => setModalWeight(w => Math.max(40, Math.round((w - 0.1) * 10) / 10))} style={{ width: 50, height: 50, borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 24, cursor: 'pointer' }}>−</button>
-              <div style={{ textAlign: 'center' }}><span style={{ fontSize: 40, fontWeight: 'bold' }}>{modalWeight.toFixed(1)}</span><span style={{ fontSize: 18, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>kg</span></div>
+              <div><span style={{ fontSize: 40, fontWeight: 'bold' }}>{modalWeight.toFixed(1)}</span><span style={{ fontSize: 18, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>kg</span></div>
               <button onClick={() => setModalWeight(w => Math.min(200, Math.round((w + 0.1) * 10) / 10))} style={{ width: 50, height: 50, borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 24, cursor: 'pointer' }}>+</button>
             </div>
             <div style={{ display: 'flex', gap: 10 }}><button onClick={() => setShowWeightModal(false)} style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', cursor: 'pointer' }}>Annuler</button><button onClick={() => saveWeight(modalWeight)} style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', background: '#06b6d4', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>OK</button></div>
@@ -821,18 +858,11 @@ export default function CoachZen() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={() => { setShowFoodModal(false); setFoodResult(null); setFoodDescription(''); setFoodImage(null); }}>
           <div style={{ background: '#1e293b', borderRadius: 20, padding: 20, maxWidth: 380, width: '100%', maxHeight: '80vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
             <h2 style={{ fontSize: 20, fontWeight: 'bold', margin: '0 0 16px', textAlign: 'center' }}>🥗 Ajouter un repas</h2>
-            
-            <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-              <button onClick={() => fileInputRef.current?.click()} style={{ flex: 1, padding: 14, borderRadius: 12, border: '2px dashed rgba(255,255,255,0.2)', background: 'transparent', color: 'white', cursor: 'pointer' }}>📷 Photo</button>
-              <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleImageUpload} style={{ display: 'none' }} />
-            </div>
-            
-            {foodImage && <img src={foodImage} alt="Repas" style={{ width: '100%', borderRadius: 12, marginBottom: 16 }} />}
-            
-            <textarea value={foodDescription} onChange={e => setFoodDescription(e.target.value)} placeholder="Ou décris ton repas..." style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 14, minHeight: 60, resize: 'none', boxSizing: 'border-box', marginBottom: 12 }} />
-            
+            <button onClick={() => fileInputRef.current?.click()} style={{ width: '100%', padding: 14, borderRadius: 12, border: '2px dashed rgba(255,255,255,0.2)', background: 'transparent', color: 'white', cursor: 'pointer', marginBottom: 12 }}>📷 Prendre une photo</button>
+            <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleImageUpload} style={{ display: 'none' }} />
+            {foodImage && <img src={foodImage} alt="Repas" style={{ width: '100%', borderRadius: 12, marginBottom: 12 }} />}
+            <textarea value={foodDescription} onChange={e => setFoodDescription(e.target.value)} placeholder="Ou décris ton repas..." style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 16, minHeight: 60, resize: 'none', boxSizing: 'border-box', marginBottom: 12 }} />
             {!foodResult && <button onClick={analyzeFood} disabled={foodLoading || (!foodDescription.trim() && !foodImage)} style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: foodLoading ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #8b5cf6, #ec4899)', color: 'white', fontWeight: 'bold', marginBottom: 12 }}>{foodLoading ? '🤖 Analyse...' : '🤖 Analyser'}</button>}
-            
             {foodResult && (
               <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 14, marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><span style={{ fontSize: 20 }}>{foodResult.isHealthy ? '✅' : '⚠️'}</span><span style={{ fontSize: 16, fontWeight: 'bold' }}>{foodResult.name}</span></div>
@@ -843,7 +873,6 @@ export default function CoachZen() {
                 </div>
               </div>
             )}
-            
             <div style={{ display: 'flex', gap: 10 }}><button onClick={() => { setShowFoodModal(false); setFoodResult(null); setFoodDescription(''); setFoodImage(null); }} style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', cursor: 'pointer' }}>Annuler</button>{foodResult && <button onClick={addCustomMeal} style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', background: '#22c55e', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>Ajouter</button>}</div>
           </div>
         </div>
@@ -899,16 +928,13 @@ export default function CoachZen() {
           <div style={{ background: '#1e293b', borderRadius: 20, padding: 20, maxWidth: 380, width: '100%', maxHeight: '80vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
             <h2 style={{ fontSize: 20, fontWeight: 'bold', margin: '0 0 16px', textAlign: 'center' }}>🏆 Badges ({unlockedBadges.length}/{BADGES.length})</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-              {BADGES.map(b => {
-                const unlocked = unlockedBadges.includes(b.id);
-                return (
-                  <div key={b.id} style={{ background: unlocked ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 12, textAlign: 'center', opacity: unlocked ? 1 : 0.4 }}>
-                    <span style={{ fontSize: 28 }}>{b.emoji}</span>
-                    <p style={{ fontSize: 11, fontWeight: 'bold', margin: '4px 0 0' }}>{b.name}</p>
-                    <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>{b.desc}</p>
-                  </div>
-                );
-              })}
+              {BADGES.map(b => (
+                <div key={b.id} style={{ background: unlockedBadges.includes(b.id) ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 12, textAlign: 'center', opacity: unlockedBadges.includes(b.id) ? 1 : 0.4 }}>
+                  <span style={{ fontSize: 28 }}>{b.emoji}</span>
+                  <p style={{ fontSize: 11, fontWeight: 'bold', margin: '4px 0 0' }}>{b.name}</p>
+                  <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>{b.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -916,7 +942,7 @@ export default function CoachZen() {
 
       {showCelebration && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 10001, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ textAlign: 'center', animation: 'pulse 0.5s ease-in-out' }}>
+          <div style={{ textAlign: 'center' }}>
             <span style={{ fontSize: 80 }}>{showCelebration.emoji}</span>
             <h2 style={{ fontSize: 24, fontWeight: 'bold', margin: '16px 0 8px' }}>🎉 Badge débloqué !</h2>
             <p style={{ fontSize: 18, color: '#a78bfa' }}>{showCelebration.name}</p>
