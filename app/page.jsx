@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { 
+import { checkRedirectResult, 
   saveToFirebase, 
   loadFromFirebase, 
   signInWithGoogle, 
@@ -257,13 +257,130 @@ export default function CoachZen() {
 
   // Auth listener
   useEffect(() => {
+    checkRedirectResult().then(result => {
+      if (result.success && result.user) {
+        setUser(result.user);
+        setAuthLoading(false);
+      }
+    });
     const unsubscribe = onAuthChange((firebaseUser) => {
       setUser(firebaseUser);
       setAuthLoading(false);
     });
     return () => unsubscribe();
   }, []);
-
+  // Auth listener
+  useEffect(() => {
+    checkRedirectResult().then(result => {
+      if (result.success && result.user) {
+        setUser(result.user);
+        setAuthLoading(false);
+      }
+    });
+    const unsubscribe = onAuthChange((firebaseUser) => {
+      setUser(firebaseUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+  // Auth listener
+  useEffect(() => {
+    checkRedirectResult().then(result => {
+      if (result.success && result.user) {
+        setUser(result.user);
+        setAuthLoading(false);
+      }
+    });
+    const unsubscribe = onAuthChange((firebaseUser) => {
+      setUser(firebaseUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+  // Auth listener
+  useEffect(() => {
+    checkRedirectResult().then(result => {
+      if (result.success && result.user) {
+        setUser(result.user);
+        setAuthLoading(false);
+      }
+    });
+    const unsubscribe = onAuthChange((firebaseUser) => {
+      setUser(firebaseUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+  // Auth listener
+  useEffect(() => {
+    checkRedirectResult().then(result => {
+      if (result.success && result.user) {
+        setUser(result.user);
+        setAuthLoading(false);
+      }
+    });
+    const unsubscribe = onAuthChange((firebaseUser) => {
+      setUser(firebaseUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+  // Auth listener
+  useEffect(() => {
+    checkRedirectResult().then(result => {
+      if (result.success && result.user) {
+        setUser(result.user);
+        setAuthLoading(false);
+      }
+    });
+    const unsubscribe = onAuthChange((firebaseUser) => {
+      setUser(firebaseUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+  // Auth listener
+  useEffect(() => {
+    checkRedirectResult().then(result => {
+      if (result.success && result.user) {
+        setUser(result.user);
+        setAuthLoading(false);
+      }
+    });
+    const unsubscribe = onAuthChange((firebaseUser) => {
+      setUser(firebaseUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+  // Auth listener
+  useEffect(() => {
+    checkRedirectResult().then(result => {
+      if (result.success && result.user) {
+        setUser(result.user);
+        setAuthLoading(false);
+      }
+    });
+    const unsubscribe = onAuthChange((firebaseUser) => {
+      setUser(firebaseUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+  // Auth listener
+  useEffect(() => {
+    checkRedirectResult().then(result => {
+      if (result.success && result.user) {
+        setUser(result.user);
+        setAuthLoading(false);
+      }
+    });
+    const unsubscribe = onAuthChange((firebaseUser) => {
+      setUser(firebaseUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
   // Stats pour badges
   const stats = useMemo(() => {
     const sorted = [...weightHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
