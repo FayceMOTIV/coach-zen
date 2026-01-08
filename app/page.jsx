@@ -24,15 +24,16 @@ const saveLocal = (k, v) => {
   try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { console.error('Save error:', e); }
 };
 
-const getDefaultDay = () => ({ 
-  habits: { breakfast: false, fasting: false, lunch: false, snack: false, dinner: false, plannedTreat: false }, 
-  sleep: 7, nap: 0, energy: 3, 
-  movement: { workout: false, walk: false, run: false }, 
+const getDefaultDay = () => ({
+  habits: { breakfast: false, fasting: false, lunch: false, snack: false, dinner: false, plannedTreat: false },
+  sleep: 7, nap: 0, energy: 3,
+  movement: { workout: false, walk: false, run: false },
   ecarts: { petit: 0, moyen: 0, gros: 0 },
   customMeals: [],
   water: 0,
   supplements: { vitaminD: false, omega3: false, magnesium: false, protein: false, creatine: false, multivitamin: false },
-  gratitudes: ['', '', '']
+  gratitudes: ['', '', ''],
+  fastingTimer: { start: null, end: null, goal: 16 }
 });
 
 const getDefaultProfile = () => ({ poids: 75, taille: 175, age: 30, sexe: 'homme', activite: 'modere', objectifPoids: 70 });
@@ -263,10 +264,124 @@ export default function CoachZen() {
   const [showCelebration, setShowCelebration] = useState(null);
   const [unlockedBadges, setUnlockedBadges] = useState([]);
   const [showBadges, setShowBadges] = useState(false);
+  const [fastingElapsed, setFastingElapsed] = useState(0);
+  const [dailyAnalysis, setDailyAnalysis] = useState('');
+  const [dailyAnalysisLoading, setDailyAnalysisLoading] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
+  const [showRecipeModal, setShowRecipeModal] = useState(false);
+  const [recipeLoading, setRecipeLoading] = useState(false);
+  const [recipes, setRecipes] = useState([]);
+  const [recipeMealType, setRecipeMealType] = useState('');
+  const [showWeeklyReport, setShowWeeklyReport] = useState(false);
+  const [weeklyReportLoading, setWeeklyReportLoading] = useState(false);
+  const [weeklyReport, setWeeklyReport] = useState('');
+  const [weeklyStats, setWeeklyStats] = useState(null);
   const fileInputRef = useRef(null);
+  const analysisTimeoutRef = useRef(null);
+
+  // Load dark mode preference
+  useEffect(() => {
+    const saved = loadLocal('cz_darkMode', true);
+    setDarkMode(saved);
+  }, []);
+
+  // Save dark mode preference
+  const toggleDarkMode = () => {
+    setDarkMode(prev => {
+      saveLocal('cz_darkMode', !prev);
+      return !prev;
+    });
+  };
+
+  // Theme colors
+  const theme = darkMode ? {
+    bg: '#0f172a',
+    card: 'rgba(255,255,255,0.05)',
+    cardBorder: 'rgba(255,255,255,0.1)',
+    text: 'white',
+    textMuted: 'rgba(255,255,255,0.5)',
+    textVeryMuted: 'rgba(255,255,255,0.3)'
+  } : {
+    bg: '#f8fafc',
+    card: 'white',
+    cardBorder: 'rgba(0,0,0,0.08)',
+    text: '#1e293b',
+    textMuted: '#64748b',
+    textVeryMuted: '#94a3b8'
+  };
 
   const realToday = useMemo(() => formatDate(new Date()), []);
+
+  // Fasting timer real-time update
+  useEffect(() => {
+    const fastingStart = dayData?.fastingTimer?.start;
+    if (!fastingStart) {
+      setFastingElapsed(0);
+      return;
+    }
+
+    const updateElapsed = () => {
+      const now = Date.now();
+      const elapsed = Math.floor((now - fastingStart) / 1000);
+      setFastingElapsed(elapsed);
+    };
+
+    updateElapsed();
+    const interval = setInterval(updateElapsed, 1000);
+    return () => clearInterval(interval);
+  }, [dayData?.fastingTimer?.start]);
+
   const isToday = selectedDate === realToday;
+
+  // Fetch daily analysis when score changes (debounced)
+  const fetchDailyAnalysis = useCallback(async () => {
+    if (!dayData || !isToday) return;
+
+    setDailyAnalysisLoading(true);
+    try {
+      const res = await fetch('/api/coach/daily-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          score: calcScore(dayData),
+          habits: dayData.habits,
+          sleep: dayData.sleep,
+          nap: dayData.nap,
+          energy: dayData.energy,
+          water: dayData.water,
+          ecarts: dayData.ecarts,
+          movement: dayData.movement,
+          customMeals: dayData.customMeals
+        })
+      });
+      const data = await res.json();
+      setDailyAnalysis(data.analysis || '');
+    } catch (err) {
+      console.error('Daily analysis error:', err);
+    } finally {
+      setDailyAnalysisLoading(false);
+    }
+  }, [dayData, isToday]);
+
+  useEffect(() => {
+    if (!mounted || !isToday) return;
+
+    // Clear previous timeout
+    if (analysisTimeoutRef.current) {
+      clearTimeout(analysisTimeoutRef.current);
+    }
+
+    // Debounce: wait 2 seconds after last change
+    analysisTimeoutRef.current = setTimeout(() => {
+      fetchDailyAnalysis();
+    }, 2000);
+
+    return () => {
+      if (analysisTimeoutRef.current) {
+        clearTimeout(analysisTimeoutRef.current);
+      }
+    };
+  }, [dayData?.habits, dayData?.sleep, dayData?.water, dayData?.ecarts, dayData?.movement, dayData?.customMeals, mounted, isToday, fetchDailyAnalysis]);
 
 
   // Auth listener - simplified
@@ -466,6 +581,59 @@ export default function CoachZen() {
     setAnalysisLoading(false);
   }, [allData, profile, weightHistory, stats]);
 
+  const fetchRecipes = useCallback(async (mealType) => {
+    setRecipeMealType(mealType);
+    setShowRecipeModal(true);
+    setRecipeLoading(true);
+    setRecipes([]);
+    try {
+      const res = await fetch('/api/recipes/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mealType })
+      });
+      const data = await res.json();
+      setRecipes(data.recipes || []);
+    } catch (err) {
+      console.error('Recipe fetch error:', err);
+      setRecipes([]);
+    }
+    setRecipeLoading(false);
+  }, []);
+
+  const fetchWeeklyReport = useCallback(async () => {
+    setShowWeeklyReport(true);
+    setWeeklyReportLoading(true);
+    setWeeklyReport('');
+    setWeeklyStats(null);
+
+    // Get last 7 days of data
+    const weekData = {};
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = formatDate(d);
+      if (allData[dateStr]) {
+        weekData[dateStr] = allData[dateStr];
+      }
+    }
+
+    try {
+      const res = await fetch('/api/coach/weekly-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekData, profile, weightHistory })
+      });
+      const data = await res.json();
+      setWeeklyReport(data.report || '');
+      setWeeklyStats(data.stats || null);
+    } catch (err) {
+      console.error('Weekly report error:', err);
+      setWeeklyReport('Impossible de générer le rapport.');
+    }
+    setWeeklyReportLoading(false);
+  }, [allData, profile, weightHistory]);
+
   const sendVoiceMessage = useCallback(async (text) => {
     if (!text.trim()) return;
     const userMsg = { role: 'user', content: text };
@@ -563,9 +731,9 @@ export default function CoachZen() {
     return sorted.map(w => ({ ...w, percent: ((w.weight - min) / (max - min)) * 100 }));
   }, [weightHistory]);
 
-  const container = { minHeight: '100dvh', background: '#0f172a', color: 'white', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', paddingBottom: 90 };
+  const container = { minHeight: '100dvh', background: theme.bg, color: theme.text, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', paddingBottom: 90, transition: 'background 0.3s, color 0.3s' };
   const content = { maxWidth: 500, margin: '0 auto', padding: '12px 16px 20px' };
-  const card = { background: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: 14, marginBottom: 12, border: '1px solid rgba(255,255,255,0.1)' };
+  const card = { background: theme.card, borderRadius: 16, padding: 14, marginBottom: 12, border: `1px solid ${theme.cardBorder}`, boxShadow: darkMode ? 'none' : '0 1px 3px rgba(0,0,0,0.1)', transition: 'background 0.3s, border 0.3s, box-shadow 0.3s' };
 
   // Show loading while checking auth
   if (authLoading) {
@@ -592,11 +760,15 @@ export default function CoachZen() {
             {syncing && <span style={{ fontSize: 10, color: '#22c55e' }}>☁️</span>}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => setShowBadges(true)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 10, padding: '8px 12px', cursor: 'pointer', position: 'relative' }}>
+            <button onClick={toggleDarkMode} style={{ background: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 10, padding: '8px 12px', cursor: 'pointer' }}>
+              <span style={{ fontSize: 14 }}>{darkMode ? '☀️' : '🌙'}</span>
+            </button>
+            <button onClick={() => setShowBadges(true)} style={{ background: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 10, padding: '8px 12px', cursor: 'pointer', position: 'relative' }}>
               <span style={{ fontSize: 14 }}>🏆</span>
               {unlockedBadges.length > 0 && <span style={{ position: 'absolute', top: -4, right: -4, background: '#22c55e', color: 'white', fontSize: 10, width: 16, height: 16, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unlockedBadges.length}</span>}
             </button>
             <button onClick={() => setShowVoiceCoach(true)} style={{ background: 'linear-gradient(135deg, #06b6d4, #0891b2)', border: 'none', borderRadius: 10, padding: '8px 12px', cursor: 'pointer' }}><span style={{ fontSize: 14 }}>🎙️</span></button>
+            <button onClick={fetchWeeklyReport} style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)', border: 'none', borderRadius: 10, padding: '8px 12px', cursor: 'pointer' }}><span style={{ fontSize: 14 }}>📊</span></button>
             <button onClick={() => { setShowAnalysis(true); fetchAnalysis('week'); }} style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', border: 'none', borderRadius: 10, padding: '8px 12px', cursor: 'pointer' }}><span style={{ fontSize: 12, fontWeight: 'bold' }}>🤖</span></button>
           </div>
         </header>
@@ -625,6 +797,21 @@ export default function CoachZen() {
               <div><h2 style={{ fontSize: 16, fontWeight: 'bold', margin: 0 }}>Score</h2><p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, margin: '4px 0' }}>{score >= 80 ? '🔥 On fire!' : score >= 60 ? '💪 Solide' : score >= 40 ? '👍 En route' : '🌱 Ça pousse'}</p></div>
               <div style={{ width: 80, height: 80, borderRadius: 40, border: '6px solid #8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 28, fontWeight: 'bold' }}>{score}</span></div>
             </div>
+
+            {/* Daily AI Analysis */}
+            {isToday && (dailyAnalysis || dailyAnalysisLoading) && (
+              <div style={{ ...card, background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(59,130,246,0.15))', border: '1px solid rgba(139,92,246,0.3)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <span style={{ fontSize: 20 }}>💬</span>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: '0 0 4px' }}>Analyse du jour</p>
+                    <p style={{ fontSize: 14, margin: 0, lineHeight: 1.5 }}>
+                      {dailyAnalysisLoading ? '...' : dailyAnalysis}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div style={card}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)' }}>🔥 Calories</span><span style={{ fontSize: 16, fontWeight: 'bold', color: totalKcal > tdee ? '#ef4444' : '#10b981' }}>{totalKcal} / {tdee}</span></div>
@@ -667,23 +854,79 @@ export default function CoachZen() {
                   <div style={{ background: dayData?.habits?.[k] ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.95)', borderRadius: 12, padding: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{dayData?.habits?.[k] ? '✓' : MEALS[k].emoji}</div>
-                      <div style={{ flex: 1, textAlign: 'left' }}><p style={{ fontSize: 13, fontWeight: 'bold', margin: 0 }}>{MEALS[k].title}</p><p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{MEALS[k].kcal} kcal</p></div>
+                      <div style={{ flex: 1, textAlign: 'left' }}>
+                        <p style={{ fontSize: 13, fontWeight: 'bold', margin: 0 }}>{MEALS[k].title}</p>
+                        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{MEALS[k].kcal} kcal • <span style={{ color: dayData?.habits?.[k] ? '#22c55e' : 'rgba(255,255,255,0.5)' }}>+{MEALS[k].points} pts</span></p>
+                      </div>
                     </div>
                   </div>
                 </button>
               ))}
             </div>
 
+            {/* Fasting Timer */}
+            <div style={{ ...card, background: 'linear-gradient(135deg, rgba(6,182,212,0.1), rgba(8,145,178,0.1))', border: '1px solid rgba(6,182,212,0.2)', marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 'bold', margin: 0 }}>⏱️ Timer Jeûne</p>
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>Objectif : {dayData?.fastingTimer?.goal || 16}h</p>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {[16, 18, 20].map(h => (
+                    <button key={h} onClick={() => setDayData(p => ({ ...p, fastingTimer: { ...(p.fastingTimer || {}), goal: h } }))}
+                      style={{ padding: '4px 8px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11, background: (dayData?.fastingTimer?.goal || 16) === h ? '#06b6d4' : 'rgba(255,255,255,0.1)', color: 'white' }}>{h}h</button>
+                  ))}
+                </div>
+              </div>
+
+              {dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end ? (
+                <>
+                  <div style={{ textAlign: 'center', marginBottom: 12 }}>
+                    <p style={{ fontSize: 32, fontWeight: 'bold', margin: 0, fontFamily: 'monospace' }}>
+                      {Math.floor(fastingElapsed / 3600).toString().padStart(2, '0')}:{Math.floor((fastingElapsed % 3600) / 60).toString().padStart(2, '0')}:{(fastingElapsed % 60).toString().padStart(2, '0')}
+                    </p>
+                    <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0' }}>
+                      {fastingElapsed >= (dayData?.fastingTimer?.goal || 16) * 3600 ? '🎉 Objectif atteint !' : `Encore ${Math.max(0, Math.ceil(((dayData?.fastingTimer?.goal || 16) * 3600 - fastingElapsed) / 3600))}h`}
+                    </p>
+                  </div>
+                  <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.1)', marginBottom: 12, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 4, background: fastingElapsed >= (dayData?.fastingTimer?.goal || 16) * 3600 ? '#22c55e' : 'linear-gradient(90deg, #06b6d4, #0891b2)', width: `${Math.min(100, (fastingElapsed / ((dayData?.fastingTimer?.goal || 16) * 3600)) * 100)}%`, transition: 'width 1s' }} />
+                  </div>
+                  <button onClick={() => setDayData(p => ({ ...p, fastingTimer: { ...(p.fastingTimer || {}), end: Date.now() } }))}
+                    style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #ef4444, #f97316)', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
+                    Terminer le jeûne
+                  </button>
+                </>
+              ) : dayData?.fastingTimer?.end ? (
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: 14, color: '#22c55e', margin: 0 }}>✅ Jeûne terminé</p>
+                  <p style={{ fontSize: 24, fontWeight: 'bold', margin: '8px 0' }}>
+                    {Math.floor((dayData.fastingTimer.end - dayData.fastingTimer.start) / 3600000)}h {Math.floor(((dayData.fastingTimer.end - dayData.fastingTimer.start) % 3600000) / 60000)}min
+                  </p>
+                  <button onClick={() => setDayData(p => ({ ...p, fastingTimer: { goal: p.fastingTimer?.goal || 16, start: null, end: null } }))}
+                    style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', cursor: 'pointer', fontSize: 12 }}>
+                    Réinitialiser
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => setDayData(p => ({ ...p, fastingTimer: { ...(p.fastingTimer || {}), start: Date.now(), end: null } }))}
+                  style={{ width: '100%', padding: 14, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #06b6d4, #0891b2)', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: 16 }}>
+                  🚀 Commencer le jeûne
+                </button>
+              )}
+            </div>
+
             {Object.entries(MEALS).filter(([k]) => !['breakfast', 'fasting'].includes(k)).map(([k, m]) => (
-              <button key={k} onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ width: '100%', padding: 3, borderRadius: 18, background: `linear-gradient(135deg, ${m.colors[0]}, ${m.colors[1]})`, border: 'none', cursor: 'pointer', marginBottom: 10 }}>
+              <div key={k} style={{ width: '100%', padding: 3, borderRadius: 18, background: `linear-gradient(135deg, ${m.colors[0]}, ${m.colors[1]})`, marginBottom: 10 }}>
                 <div style={{ background: dayData?.habits?.[k] ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.95)', borderRadius: 15, padding: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>{dayData?.habits?.[k] ? '✓' : m.emoji}</div>
-                    <div style={{ flex: 1, textAlign: 'left' }}><p style={{ fontSize: 16, fontWeight: 'bold', margin: 0 }}>{m.title}</p><p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{m.time} • {m.kcal} kcal</p></div>
-                    <div style={{ padding: '6px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.1)' }}><span style={{ fontSize: 14, fontWeight: 'bold' }}>{dayData?.habits?.[k] ? '✓' : '+20'}</span></div>
+                    <button onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, border: 'none', cursor: 'pointer' }}>{dayData?.habits?.[k] ? '✓' : m.emoji}</button>
+                    <div onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ flex: 1, textAlign: 'left', cursor: 'pointer' }}><p style={{ fontSize: 16, fontWeight: 'bold', margin: 0 }}>{m.title}</p><p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{m.time} • {m.kcal} kcal</p></div>
+                    <button onClick={() => fetchRecipes(k)} style={{ padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.1)', border: 'none', cursor: 'pointer', marginRight: 6 }}><span style={{ fontSize: 12 }}>💡</span></button>
+                    <div onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ padding: '6px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.1)', cursor: 'pointer' }}><span style={{ fontSize: 14, fontWeight: 'bold' }}>{dayData?.habits?.[k] ? '✓' : '+20'}</span></div>
                   </div>
                 </div>
-              </button>
+              </div>
             ))}
 
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(34,197,94,0.1), rgba(16,185,129,0.1))', border: '1px solid rgba(34,197,94,0.2)' }}>
@@ -915,6 +1158,95 @@ export default function CoachZen() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}><h2 style={{ fontSize: 20, fontWeight: 'bold', margin: 0 }}>🤖 Analyse IA</h2><button onClick={() => setShowAnalysis(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 24, cursor: 'pointer' }}>×</button></div>
             <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}><button onClick={() => fetchAnalysis('week')} style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', cursor: 'pointer', background: analysisPeriod === 'week' ? '#8b5cf6' : 'rgba(255,255,255,0.1)', color: 'white', fontWeight: 'bold' }}>7 jours</button><button onClick={() => fetchAnalysis('month')} style={{ flex: 1, padding: 12, borderRadius: 10, border: 'none', cursor: 'pointer', background: analysisPeriod === 'month' ? '#8b5cf6' : 'rgba(255,255,255,0.1)', color: 'white', fontWeight: 'bold' }}>30 jours</button></div>
             {analysisLoading ? <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>Analyse...</p> : <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{analysis}</div>}
+          </div>
+        </div>
+      )}
+
+      {showRecipeModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={() => setShowRecipeModal(false)}>
+          <div style={{ background: '#1e293b', borderRadius: 20, padding: 20, maxWidth: 380, width: '100%', maxHeight: '80vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 'bold', margin: 0 }}>💡 Idées recettes</h2>
+              <button onClick={() => setShowRecipeModal(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 24, cursor: 'pointer' }}>×</button>
+            </div>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: '0 0 16px' }}>
+              {recipeMealType && MEALS[recipeMealType] ? `Pour votre ${MEALS[recipeMealType].title.toLowerCase()}` : 'Suggestions personnalisées'}
+            </p>
+            {recipeLoading ? (
+              <div style={{ textAlign: 'center', padding: 40 }}>
+                <p style={{ color: 'rgba(255,255,255,0.5)' }}>🍳 Génération des recettes...</p>
+              </div>
+            ) : recipes.length === 0 ? (
+              <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', padding: 20 }}>Aucune recette disponible</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {recipes.map((recipe, idx) => (
+                  <div key={idx} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 14, border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                      <span style={{ fontSize: 24 }}>{recipe.emoji || '🍽️'}</span>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: 14, fontWeight: 'bold', margin: 0 }}>{recipe.name}</p>
+                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>⏱️ {recipe.prepTime} • 🔥 {recipe.calories} kcal</p>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {(recipe.ingredients || []).map((ing, i) => (
+                        <span key={i} style={{ fontSize: 11, background: 'rgba(139,92,246,0.2)', color: '#c4b5fd', padding: '4px 8px', borderRadius: 6 }}>{ing}</span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button onClick={() => fetchRecipes(recipeMealType)} disabled={recipeLoading} style={{ width: '100%', marginTop: 16, padding: 14, borderRadius: 12, border: 'none', background: recipeLoading ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #8b5cf6, #ec4899)', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
+              {recipeLoading ? '...' : '🔄 Nouvelles idées'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showWeeklyReport && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={() => setShowWeeklyReport(false)}>
+          <div style={{ background: '#1e293b', borderRadius: 20, padding: 20, maxWidth: 400, width: '100%', maxHeight: '85vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 'bold', margin: 0 }}>📊 Rapport Hebdo</h2>
+              <button onClick={() => setShowWeeklyReport(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 24, cursor: 'pointer' }}>×</button>
+            </div>
+
+            {weeklyStats && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 16 }}>
+                <div style={{ background: 'rgba(139,92,246,0.1)', borderRadius: 12, padding: 12, textAlign: 'center' }}>
+                  <p style={{ fontSize: 24, fontWeight: 'bold', color: '#8b5cf6', margin: 0 }}>{weeklyStats.avgScore}</p>
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0' }}>Score moyen</p>
+                </div>
+                <div style={{ background: 'rgba(34,197,94,0.1)', borderRadius: 12, padding: 12, textAlign: 'center' }}>
+                  <p style={{ fontSize: 24, fontWeight: 'bold', color: '#22c55e', margin: 0 }}>{weeklyStats.days}/7</p>
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0' }}>Jours suivis</p>
+                </div>
+                <div style={{ background: 'rgba(6,182,212,0.1)', borderRadius: 12, padding: 12, textAlign: 'center' }}>
+                  <p style={{ fontSize: 24, fontWeight: 'bold', color: '#06b6d4', margin: 0 }}>{weeklyStats.avgSleep}h</p>
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0' }}>Sommeil moy.</p>
+                </div>
+                <div style={{ background: 'rgba(249,115,22,0.1)', borderRadius: 12, padding: 12, textAlign: 'center' }}>
+                  <p style={{ fontSize: 24, fontWeight: 'bold', color: '#f97316', margin: 0 }}>{weeklyStats.workoutDays}</p>
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0' }}>Jours sport</p>
+                </div>
+              </div>
+            )}
+
+            {weeklyReportLoading ? (
+              <div style={{ textAlign: 'center', padding: 40 }}>
+                <p style={{ color: 'rgba(255,255,255,0.5)' }}>📝 Génération du rapport...</p>
+              </div>
+            ) : (
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                {weeklyReport}
+              </div>
+            )}
+
+            <button onClick={fetchWeeklyReport} disabled={weeklyReportLoading} style={{ width: '100%', marginTop: 16, padding: 14, borderRadius: 12, border: 'none', background: weeklyReportLoading ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #8b5cf6, #ec4899)', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
+              {weeklyReportLoading ? '...' : '🔄 Régénérer'}
+            </button>
           </div>
         </div>
       )}
