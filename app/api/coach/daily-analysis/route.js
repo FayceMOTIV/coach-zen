@@ -4,7 +4,7 @@ const client = new Anthropic();
 
 export async function POST(request) {
   try {
-    const { score, habits, sleep, nap, energy, water, ecarts, movement } = await request.json();
+    const { score, habits, sleep, nap, energy, water, ecarts, movement, customMeals } = await request.json();
 
     // Build detailed habits list
     const habitNames = {
@@ -24,15 +24,21 @@ export async function POST(request) {
     const doneHabits = habitsList.filter(h => h.done).map(h => h.name);
     const missedHabits = habitsList.filter(h => !h.done).map(h => h.name);
 
-    // Build movement list
+    // Build movement list (matching UI keys: workout, run, walk)
     const movementNames = {
-      walk: 'Marche',
-      sport: 'Sport',
-      stretch: 'Étirements'
+      workout: 'Musculation',
+      run: 'Course',
+      walk: 'Marche'
     };
     const movementList = Object.entries(movement || {})
       .filter(([_, done]) => done)
       .map(([key]) => movementNames[key] || key);
+
+    // Custom meals summary
+    const customMealsList = (customMeals || []).slice(0, 4);
+    const customMealsInfo = customMealsList.length > 0
+      ? `${customMealsList.length} repas ajouté(s): ${customMealsList.map(m => m.name).join(', ')}`
+      : '';
 
     // Calculate ecarts
     const petit = ecarts?.petit || 0;
@@ -43,10 +49,10 @@ export async function POST(request) {
     const prompt = `Coach bienveillant et direct. Analyse cette journée en 2 phrases MAX.
 
 DONNÉES :
-- Score : ${score}/100
+- Score : ${score} pts${score >= 100 ? ' (journée parfaite!)' : ''}
 - Repas OK : ${doneHabits.join(', ') || 'aucun'}
 - Repas manqués : ${missedHabits.join(', ') || 'aucun'}
-- Sommeil : ${sleep}h
+${customMealsInfo ? `- Repas custom : ${customMealsInfo}` : ''}- Sommeil : ${sleep}h
 - Sieste : ${nap} min
 - Énergie : ${energy}/5
 - Eau : ${water}/8 verres
@@ -93,12 +99,14 @@ Réponds UNIQUEMENT avec le JSON : { "analysis": "Phrase 1. Phrase 2." }`;
 
     // Generate contextual fallback based on actual data
     let fallback = "";
-    if (score >= 80) {
-      fallback = `Score de ${score}/100, belle performance ! ${doneHabits.length} repas validés, continue sur cette lancée.`;
+    if (score >= 100) {
+      fallback = `${score} pts, journée parfaite ! ${doneHabits.length} repas validés${movementList.length > 0 ? ' + ' + movementList.join(', ') : ''}, bravo !`;
+    } else if (score >= 80) {
+      fallback = `Score de ${score} pts, belle performance ! ${doneHabits.length} repas validés, continue sur cette lancée.`;
     } else if (score >= 50) {
       fallback = `${doneHabits.length} repas suivis aujourd'hui, c'est un bon début. ${sleep < 7 ? `Vise 7h de sommeil ce soir.` : `Garde ce rythme demain !`}`;
     } else {
-      fallback = `Journée à ${score}/100, on a tous des jours comme ça. ${totalEcarts > 0 ? `Demain, prépare tes repas à l'avance.` : `Un pas à la fois, tu vas y arriver.`}`;
+      fallback = `Journée à ${score} pts, on a tous des jours comme ça. ${totalEcarts > 0 ? `Demain, prépare tes repas à l'avance.` : `Un pas à la fois, tu vas y arriver.`}`;
     }
 
     return Response.json({ analysis: fallback });

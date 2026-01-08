@@ -18,6 +18,9 @@ export async function POST(request) {
         if (d.habits.dinner) s += 20;
         if (d.habits.plannedTreat) s += 20;
       }
+      // Custom meals (capped at 4 = 80 pts max)
+      const customMeals = (d.customMeals || []).slice(0, 4);
+      customMeals.forEach(m => { s += m.points || 0; });
       if (d.sleep >= 6.5) s += 10;
       if ((d.water || 0) >= 8) s += 10;
       if (d.movement) {
@@ -25,7 +28,16 @@ export async function POST(request) {
         if (d.movement.walk) s += 5;
         if (d.movement.run) s += 5;
       }
-      return Math.min(s, 100);
+      // Supplements
+      const supplementsCount = d.supplements ? Object.values(d.supplements).filter(Boolean).length : 0;
+      if (supplementsCount >= 3) s += 5;
+      // Gratitudes
+      const gratitudesFilled = (d.gratitudes || []).filter(g => g && g.trim()).length;
+      if (gratitudesFilled >= 3) s += 5;
+      // Ecarts penalty
+      const ecartsCount = d.ecarts ? (d.ecarts.petit || 0) + (d.ecarts.moyen || 0) + (d.ecarts.gros || 0) : 0;
+      s -= ecartsCount * 10;
+      return Math.max(0, s); // No cap - XP system without limit
     });
 
     const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
@@ -56,7 +68,7 @@ export async function POST(request) {
 
 STATISTIQUES DE LA SEMAINE:
 - Jours suivis: ${days}/7
-- Score moyen: ${avgScore}/100 (min: ${minScore}, max: ${maxScore})
+- Score moyen: ${avgScore} pts (min: ${minScore}, max: ${maxScore})
 - Sommeil moyen: ${avgSleep}h
 - Hydratation moyenne: ${avgWater} verres/jour
 - Jours d'activité physique: ${workoutDays}/7

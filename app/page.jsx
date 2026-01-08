@@ -40,8 +40,8 @@ const getDefaultProfile = () => ({ poids: 75, taille: 175, age: 30, sexe: 'homme
 
 const getEcartsCount = (e) => !e ? 0 : (e.petit || 0) + (e.moyen || 0) + (e.gros || 0);
 const getEcartsKcal = (e) => !e ? 0 : ((e.petit || 0) * 300) + ((e.moyen || 0) * 600) + ((e.gros || 0) * 1000);
-const getCustomMealsKcal = (meals) => (!meals || !Array.isArray(meals)) ? 0 : meals.reduce((sum, m) => sum + (m.kcal || 0), 0);
-const getCustomMealsPoints = (meals) => (!meals || !Array.isArray(meals)) ? 0 : meals.reduce((sum, m) => sum + (m.points || 0), 0);
+const getCustomMealsKcal = (meals) => (!meals || !Array.isArray(meals)) ? 0 : meals.slice(0, 4).reduce((sum, m) => sum + (m.kcal || 0), 0); // Cap at 4 meals
+const getCustomMealsPoints = (meals) => (!meals || !Array.isArray(meals)) ? 0 : meals.slice(0, 4).reduce((sum, m) => sum + (m.points || 0), 0); // Cap at 4 meals (80 pts max)
 const getSupplementsCount = (s) => !s ? 0 : Object.values(s).filter(Boolean).length;
 
 const calcScore = (d) => { 
@@ -700,6 +700,7 @@ export default function CoachZen() {
 
   const score = calcScore(dayData);
   const planKcal = useMemo(() => Object.entries(MEALS).reduce((s, [k, m]) => (dayData?.habits?.[k]) ? s + m.kcal : s, 0), [dayData?.habits]);
+  const fullPlanKcal = useMemo(() => Object.entries(MEALS).filter(([k]) => k !== 'fasting').reduce((s, [_, m]) => s + m.kcal, 0), []); // Total plan without fasting
   const customKcal = getCustomMealsKcal(dayData.customMeals);
   const ecartsKcal = getEcartsKcal(dayData.ecarts);
   const totalKcal = planKcal + customKcal + ecartsKcal;
@@ -713,13 +714,15 @@ export default function CoachZen() {
     const recent = sorted.slice(-14);
     const first = recent[0], last = recent[recent.length - 1];
     const daysDiff = (new Date(last.date) - new Date(first.date)) / (1000 * 60 * 60 * 24);
-    if (daysDiff < 7) return null;
+    if (daysDiff < 7 || daysDiff === 0) return null; // Prevent division by zero
     const lossPerDay = (first.weight - last.weight) / daysDiff;
-    if (lossPerDay <= 0) return { message: "Phase de maintien", date: null };
+    if (lossPerDay <= 0.001) return { message: "Phase de maintien", date: null }; // Threshold to avoid near-zero division
     const remaining = last.weight - profile.objectifPoids;
     if (remaining <= 0) return { message: "🎉 Objectif atteint !", date: null };
+    const daysToGoal = Math.ceil(remaining / lossPerDay);
+    if (daysToGoal > 365 * 3) return { message: "Objectif lointain", date: null }; // Cap at 3 years
     const goalDate = new Date();
-    goalDate.setDate(goalDate.getDate() + Math.ceil(remaining / lossPerDay));
+    goalDate.setDate(goalDate.getDate() + daysToGoal);
     return { message: `${(lossPerDay * 7).toFixed(1)} kg/sem`, date: goalDate };
   }, [weightHistory, profile.objectifPoids]);
 
@@ -1351,7 +1354,7 @@ export default function CoachZen() {
         {tab === 'plan' && (
           <>
             <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 14, color: theme.text }}>Mon Plan</h1>
-            <div style={card}><p style={{ color: theme.textMuted, fontSize: 14, margin: 0 }}>Total: <strong style={{ color: '#10b981' }}>2650 kcal</strong> • TDEE: <strong style={{ color: '#06b6d4' }}>{tdee} kcal</strong></p></div>
+            <div style={card}><p style={{ color: theme.textMuted, fontSize: 14, margin: 0 }}>Plan: <strong style={{ color: '#10b981' }}>{fullPlanKcal} kcal</strong> • TDEE: <strong style={{ color: '#06b6d4' }}>{tdee} kcal</strong></p></div>
             {Object.entries(MEALS).filter(([k]) => k !== 'fasting').map(([k, m]) => (
               <div key={k} style={{ background: `linear-gradient(135deg, ${m.colors[0]}, ${m.colors[1]})`, borderRadius: 16, padding: 14, marginBottom: 10 }}>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
