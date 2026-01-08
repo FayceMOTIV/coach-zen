@@ -1,12 +1,11 @@
 {
   "name": "Coach Zen",
   "short_name": "Coach Zen",
-  "description": "Le système qui fonctionne quand tu es fatigué",
+  "description": "Ton coach nutrition personnel",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
-  "theme_color": "#0f172a",
-  "orientation": "portrait",
+  "theme_color": "#8b5cf6",
   "icons": [
     {
       "src": "/icon-192.png",

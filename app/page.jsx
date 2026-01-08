@@ -128,7 +128,20 @@ function LoginScreen() {
   const handleGoogle = async () => {
     setLoading(true);
     setError('');
-    await signInWithGoogle();
+    try {
+      const result = await signInWithGoogle();
+      // For redirect mode, page navigates away, so loading stays true
+      // For popup mode, check result
+      if (result && !result.success) {
+        setError(result.error || 'Erreur de connexion Google');
+        setLoading(false);
+      }
+      // On success: onAuthStateChanged triggers parent re-render
+    } catch (err) {
+      console.error('Google sign-in error:', err);
+      setError('Erreur de connexion Google');
+      setLoading(false);
+    }
   };
 
   const handleEmail = async (e) => {
@@ -137,27 +150,36 @@ function LoginScreen() {
     setLoading(true);
     setError('');
     setMessage('');
-    
-    if (mode === 'login') {
-      const result = await signInWithEmail(email, password);
-      if (!result.success) {
-        setError(result.error || 'Erreur de connexion');
+
+    try {
+      if (mode === 'login') {
+        const result = await signInWithEmail(email, password);
+        if (!result.success) {
+          setError(result.error || 'Erreur de connexion');
+          setLoading(false);
+        }
+        // On success: onAuthStateChanged will trigger parent re-render
+        // But keep loading=true to prevent double-clicks during transition
+      } else if (mode === 'signup') {
+        const result = await signUpWithEmail(email, password);
+        if (!result.success) {
+          setError(result.error || 'Erreur inscription');
+          setLoading(false);
+        }
+        // On success: onAuthStateChanged will trigger parent re-render
+      } else if (mode === 'reset') {
+        const result = await resetPassword(email);
+        if (result.success) {
+          setMessage('Email envoyé ! Vérifie ta boîte mail.');
+          setMode('login');
+        } else {
+          setError(result.error || 'Erreur');
+        }
         setLoading(false);
       }
-    } else if (mode === 'signup') {
-      const result = await signUpWithEmail(email, password);
-      if (!result.success) {
-        setError(result.error || 'Erreur inscription');
-        setLoading(false);
-      }
-    } else if (mode === 'reset') {
-      const result = await resetPassword(email);
-      if (result.success) {
-        setMessage('Email envoyé ! Vérifie ta boîte mail.');
-        setMode('login');
-      } else {
-        setError(result.error || 'Erreur');
-      }
+    } catch (err) {
+      console.error('Auth error:', err);
+      setError('Une erreur est survenue');
       setLoading(false);
     }
   };
@@ -261,131 +283,33 @@ export default function CoachZen() {
   const realToday = useMemo(() => formatDate(new Date()), []);
   const isToday = selectedDate === realToday;
 
-  // Auth listener
+  // Auth listener - check redirect result and listen for auth state changes
   useEffect(() => {
+    let isMounted = true;
+
+    // Check for redirect result (mobile Google sign-in)
     checkRedirectResult().then(result => {
+      if (!isMounted) return;
       if (result.success && result.user) {
         setUser(result.user);
-        setAuthLoading(false);
       }
+      // Always set authLoading to false after checking redirect
+      setAuthLoading(false);
+    }).catch(() => {
+      if (isMounted) setAuthLoading(false);
     });
+
+    // Listen for auth state changes
     const unsubscribe = onAuthChange((firebaseUser) => {
+      if (!isMounted) return;
       setUser(firebaseUser);
       setAuthLoading(false);
     });
-    return () => unsubscribe();
-  }, []);
-  // Auth listener
-  useEffect(() => {
-    checkRedirectResult().then(result => {
-      if (result.success && result.user) {
-        setUser(result.user);
-        setAuthLoading(false);
-      }
-    });
-    const unsubscribe = onAuthChange((firebaseUser) => {
-      setUser(firebaseUser);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-  // Auth listener
-  useEffect(() => {
-    checkRedirectResult().then(result => {
-      if (result.success && result.user) {
-        setUser(result.user);
-        setAuthLoading(false);
-      }
-    });
-    const unsubscribe = onAuthChange((firebaseUser) => {
-      setUser(firebaseUser);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-  // Auth listener
-  useEffect(() => {
-    checkRedirectResult().then(result => {
-      if (result.success && result.user) {
-        setUser(result.user);
-        setAuthLoading(false);
-      }
-    });
-    const unsubscribe = onAuthChange((firebaseUser) => {
-      setUser(firebaseUser);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-  // Auth listener
-  useEffect(() => {
-    checkRedirectResult().then(result => {
-      if (result.success && result.user) {
-        setUser(result.user);
-        setAuthLoading(false);
-      }
-    });
-    const unsubscribe = onAuthChange((firebaseUser) => {
-      setUser(firebaseUser);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-  // Auth listener
-  useEffect(() => {
-    checkRedirectResult().then(result => {
-      if (result.success && result.user) {
-        setUser(result.user);
-        setAuthLoading(false);
-      }
-    });
-    const unsubscribe = onAuthChange((firebaseUser) => {
-      setUser(firebaseUser);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-  // Auth listener
-  useEffect(() => {
-    checkRedirectResult().then(result => {
-      if (result.success && result.user) {
-        setUser(result.user);
-        setAuthLoading(false);
-      }
-    });
-    const unsubscribe = onAuthChange((firebaseUser) => {
-      setUser(firebaseUser);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-  // Auth listener
-  useEffect(() => {
-    checkRedirectResult().then(result => {
-      if (result.success && result.user) {
-        setUser(result.user);
-        setAuthLoading(false);
-      }
-    });
-    const unsubscribe = onAuthChange((firebaseUser) => {
-      setUser(firebaseUser);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-  // Auth listener
-  useEffect(() => {
-    checkRedirectResult().then(result => {
-      if (result.success && result.user) {
-        setUser(result.user);
-        setAuthLoading(false);
-      }
-    });
-    const unsubscribe = onAuthChange((firebaseUser) => {
-      setUser(firebaseUser);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
   // Stats pour badges
   const stats = useMemo(() => {
