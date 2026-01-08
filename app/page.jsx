@@ -293,21 +293,43 @@ export default function CoachZen() {
     });
   };
 
-  // Theme colors
+  // Theme colors - comprehensive
   const theme = darkMode ? {
     bg: '#0f172a',
     card: 'rgba(255,255,255,0.05)',
     cardBorder: 'rgba(255,255,255,0.1)',
-    text: 'white',
-    textMuted: 'rgba(255,255,255,0.5)',
-    textVeryMuted: 'rgba(255,255,255,0.3)'
+    cardShadow: 'none',
+    text: '#ffffff',
+    textMuted: 'rgba(255,255,255,0.6)',
+    textFaint: 'rgba(255,255,255,0.4)',
+    textVeryFaint: 'rgba(255,255,255,0.3)',
+    inputBg: 'rgba(255,255,255,0.1)',
+    buttonBg: 'rgba(255,255,255,0.1)',
+    buttonBgHover: 'rgba(255,255,255,0.15)',
+    navBg: 'rgba(15,23,42,0.98)',
+    modalBg: '#1e293b',
+    overlayBg: 'rgba(0,0,0,0.85)',
+    progressBg: 'rgba(255,255,255,0.1)',
+    mealCardBg: 'rgba(15,23,42,0.95)',
+    mealCardBgActive: 'rgba(255,255,255,0.15)'
   } : {
-    bg: '#f8fafc',
-    card: 'white',
-    cardBorder: 'rgba(0,0,0,0.08)',
+    bg: '#f1f5f9',
+    card: '#ffffff',
+    cardBorder: '#e2e8f0',
+    cardShadow: '0 1px 3px rgba(0,0,0,0.1)',
     text: '#1e293b',
     textMuted: '#64748b',
-    textVeryMuted: '#94a3b8'
+    textFaint: '#94a3b8',
+    textVeryFaint: '#cbd5e1',
+    inputBg: '#f1f5f9',
+    buttonBg: 'rgba(0,0,0,0.05)',
+    buttonBgHover: 'rgba(0,0,0,0.1)',
+    navBg: 'rgba(255,255,255,0.98)',
+    modalBg: '#ffffff',
+    overlayBg: 'rgba(0,0,0,0.5)',
+    progressBg: '#e2e8f0',
+    mealCardBg: '#ffffff',
+    mealCardBgActive: 'rgba(139,92,246,0.1)'
   };
 
   const realToday = useMemo(() => formatDate(new Date()), []);
@@ -733,7 +755,7 @@ export default function CoachZen() {
 
   const container = { minHeight: '100dvh', background: theme.bg, color: theme.text, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', paddingBottom: 90, transition: 'background 0.3s, color 0.3s' };
   const content = { maxWidth: 500, margin: '0 auto', padding: '12px 16px 20px' };
-  const card = { background: theme.card, borderRadius: 16, padding: 14, marginBottom: 12, border: `1px solid ${theme.cardBorder}`, boxShadow: darkMode ? 'none' : '0 1px 3px rgba(0,0,0,0.1)', transition: 'background 0.3s, border 0.3s, box-shadow 0.3s' };
+  const card = { background: theme.card, borderRadius: 16, padding: 14, marginBottom: 12, border: `1px solid ${theme.cardBorder}`, boxShadow: theme.cardShadow, transition: 'background 0.3s, border 0.3s, box-shadow 0.3s' };
 
   // Show loading while checking auth
   if (authLoading) {
@@ -777,25 +799,25 @@ export default function CoachZen() {
           <>
             <div style={{ textAlign: 'center', marginBottom: 12 }}>
               {!isToday && <button onClick={() => setSelectedDate(realToday)} style={{ background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 8, padding: '6px 14px', marginBottom: 8, cursor: 'pointer' }}><span style={{ color: '#a78bfa', fontSize: 12 }}>← Retour à aujourd'hui</span></button>}
-              <p style={{ color: isToday ? 'rgba(255,255,255,0.4)' : '#f59e0b', fontSize: 12, margin: 0 }}>{isToday ? getDayName(selectedDateObj) : '⚠️ Édition'}</p>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}><button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(formatDate(d)); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8, width: 36, height: 36, cursor: 'pointer', color: 'white', fontSize: 18 }}>←</button><h1 style={{ fontSize: 26, fontWeight: 'bold', margin: 0, color: 'white' }}>{selectedDateObj.getDate()} {getMonthName(selectedDateObj)}</h1><button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); if (d <= new Date()) setSelectedDate(formatDate(d)); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8, width: 36, height: 36, cursor: 'pointer', color: 'white', fontSize: 18, opacity: isToday ? 0.3 : 1 }} disabled={isToday}>→</button></div>
+              <p style={{ color: isToday ? theme.textFaint : '#f59e0b', fontSize: 12, margin: 0 }}>{isToday ? getDayName(selectedDateObj) : '⚠️ Édition'}</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}><button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(formatDate(d)); }} style={{ background: theme.buttonBg, border: 'none', borderRadius: 8, width: 36, height: 36, cursor: 'pointer', color: theme.text, fontSize: 18 }}>←</button><h1 style={{ fontSize: 26, fontWeight: 'bold', margin: 0, color: theme.text }}>{selectedDateObj.getDate()} {getMonthName(selectedDateObj)}</h1><button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); if (d <= new Date()) setSelectedDate(formatDate(d)); }} style={{ background: theme.buttonBg, border: 'none', borderRadius: 8, width: 36, height: 36, cursor: 'pointer', color: theme.text, fontSize: 18, opacity: isToday ? 0.3 : 1 }} disabled={isToday}>→</button></div>
             </div>
 
             {isToday && coachMessage && (
               <div style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', padding: 2, borderRadius: 16, marginBottom: 12 }}>
-                <div style={{ background: 'rgba(15,23,42,0.95)', borderRadius: 14, padding: 12 }}>
+                <div style={{ background: darkMode ? 'rgba(15,23,42,0.95)' : 'rgba(255,255,255,0.95)', borderRadius: 14, padding: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><span style={{ fontWeight: 'bold', fontSize: 14 }}>Z</span></div>
-                    <p style={{ flex: 1, fontSize: 14, margin: 0, lineHeight: 1.5 }}>{coachMessage}</p>
-                    <button onClick={() => setCoachMessage(null)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 18, padding: 0 }}>×</button>
+                    <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><span style={{ fontWeight: 'bold', fontSize: 14, color: 'white' }}>Z</span></div>
+                    <p style={{ flex: 1, fontSize: 14, margin: 0, lineHeight: 1.5, color: theme.text }}>{coachMessage}</p>
+                    <button onClick={() => setCoachMessage(null)} style={{ background: 'none', border: 'none', color: theme.textFaint, cursor: 'pointer', fontSize: 18, padding: 0 }}>×</button>
                   </div>
                 </div>
               </div>
             )}
 
             <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16 }}>
-              <div><h2 style={{ fontSize: 16, fontWeight: 'bold', margin: 0 }}>Score</h2><p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, margin: '4px 0' }}>{score >= 80 ? '🔥 On fire!' : score >= 60 ? '💪 Solide' : score >= 40 ? '👍 En route' : '🌱 Ça pousse'}</p></div>
-              <div style={{ width: 80, height: 80, borderRadius: 40, border: '6px solid #8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 28, fontWeight: 'bold' }}>{score}</span></div>
+              <div><h2 style={{ fontSize: 16, fontWeight: 'bold', margin: 0, color: theme.text }}>Score</h2><p style={{ color: theme.textMuted, fontSize: 14, margin: '4px 0' }}>{score >= 80 ? '🔥 On fire!' : score >= 60 ? '💪 Solide' : score >= 40 ? '👍 En route' : '🌱 Ça pousse'}</p></div>
+              <div style={{ width: 80, height: 80, borderRadius: 40, border: '6px solid #8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 28, fontWeight: 'bold', color: theme.text }}>{score}</span></div>
             </div>
 
             {/* Daily AI Analysis */}
@@ -804,8 +826,8 @@ export default function CoachZen() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                   <span style={{ fontSize: 20 }}>💬</span>
                   <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: '0 0 4px' }}>Analyse du jour</p>
-                    <p style={{ fontSize: 14, margin: 0, lineHeight: 1.5 }}>
+                    <p style={{ fontSize: 12, color: theme.textMuted, margin: '0 0 4px' }}>Analyse du jour</p>
+                    <p style={{ fontSize: 14, margin: 0, lineHeight: 1.5, color: theme.text }}>
                       {dailyAnalysisLoading ? '...' : dailyAnalysis}
                     </p>
                   </div>
@@ -814,20 +836,20 @@ export default function CoachZen() {
             )}
 
             <div style={card}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)' }}>🔥 Calories</span><span style={{ fontSize: 16, fontWeight: 'bold', color: totalKcal > tdee ? '#ef4444' : '#10b981' }}>{totalKcal} / {tdee}</span></div>
-              <div style={{ height: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' }}><div style={{ height: '100%', background: totalKcal > tdee ? '#ef4444' : '#10b981', width: `${Math.min((totalKcal / tdee) * 100, 100)}%` }} /></div>
-              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: '8px 0 0', textAlign: 'center' }}>{(tdee - totalKcal) > 0 ? `📉 Déficit: −${tdee - totalKcal} kcal` : `📈 Surplus: +${Math.abs(tdee - totalKcal)} kcal`}</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ fontSize: 14, color: theme.textMuted }}>🔥 Calories</span><span style={{ fontSize: 16, fontWeight: 'bold', color: totalKcal > tdee ? '#ef4444' : '#10b981' }}>{totalKcal} / {tdee}</span></div>
+              <div style={{ height: 8, background: theme.progressBg, borderRadius: 4, overflow: 'hidden' }}><div style={{ height: '100%', background: totalKcal > tdee ? '#ef4444' : '#10b981', width: `${Math.min((totalKcal / tdee) * 100, 100)}%` }} /></div>
+              <p style={{ fontSize: 11, color: theme.textFaint, margin: '8px 0 0', textAlign: 'center' }}>{(tdee - totalKcal) > 0 ? `📉 Déficit: −${tdee - totalKcal} kcal` : `📈 Surplus: +${Math.abs(tdee - totalKcal)} kcal`}</p>
             </div>
 
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(6,182,212,0.1), rgba(8,145,178,0.1))', border: '1px solid rgba(6,182,212,0.2)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <div><p style={{ fontSize: 14, fontWeight: 'bold', margin: 0 }}>💧 Hydratation</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>+10 pts si ≥ 8</p></div>
-                <span style={{ fontSize: 18, fontWeight: 'bold', color: (dayData.water || 0) >= 8 ? '#22c55e' : 'white' }}>{dayData.water || 0}/8</span>
+                <div><p style={{ fontSize: 14, fontWeight: 'bold', margin: 0, color: theme.text }}>💧 Hydratation</p><p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>+10 pts si ≥ 8</p></div>
+                <span style={{ fontSize: 18, fontWeight: 'bold', color: (dayData.water || 0) >= 8 ? '#22c55e' : theme.text }}>{dayData.water || 0}/8</span>
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {[...Array(8)].map((_, i) => (
-                  <button key={i} onClick={() => setDayData(p => ({ ...p, water: i + 1 }))} style={{ width: 36, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer', background: i < (dayData.water || 0) ? '#06b6d4' : 'rgba(255,255,255,0.1)' }}>
-                    <span style={{ fontSize: 16 }}>{i < (dayData.water || 0) ? '💧' : '○'}</span>
+                  <button key={i} onClick={() => setDayData(p => ({ ...p, water: i + 1 }))} style={{ width: 36, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer', background: i < (dayData.water || 0) ? '#06b6d4' : theme.buttonBg }}>
+                    <span style={{ fontSize: 16, color: i < (dayData.water || 0) ? 'white' : theme.textMuted }}>{i < (dayData.water || 0) ? '💧' : '○'}</span>
                   </button>
                 ))}
               </div>
@@ -835,14 +857,14 @@ export default function CoachZen() {
 
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(168,85,247,0.1), rgba(139,92,246,0.1))', border: '1px solid rgba(168,85,247,0.2)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <div><p style={{ fontSize: 14, fontWeight: 'bold', margin: 0 }}>💊 Compléments</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>+5 pts si ≥ 3</p></div>
-                <span style={{ fontSize: 14, fontWeight: 'bold', color: getSupplementsCount(dayData.supplements) >= 3 ? '#22c55e' : 'white' }}>{getSupplementsCount(dayData.supplements)}/6</span>
+                <div><p style={{ fontSize: 14, fontWeight: 'bold', margin: 0, color: theme.text }}>💊 Compléments</p><p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>+5 pts si ≥ 3</p></div>
+                <span style={{ fontSize: 14, fontWeight: 'bold', color: getSupplementsCount(dayData.supplements) >= 3 ? '#22c55e' : theme.text }}>{getSupplementsCount(dayData.supplements)}/6</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                 {SUPPLEMENTS.map(s => (
-                  <button key={s.id} onClick={() => updateSupplement(s.id, !dayData.supplements?.[s.id])} style={{ padding: 10, borderRadius: 10, border: 'none', cursor: 'pointer', background: dayData.supplements?.[s.id] ? '#8b5cf6' : 'rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <button key={s.id} onClick={() => updateSupplement(s.id, !dayData.supplements?.[s.id])} style={{ padding: 10, borderRadius: 10, border: 'none', cursor: 'pointer', background: dayData.supplements?.[s.id] ? '#8b5cf6' : theme.buttonBg, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                     <span style={{ fontSize: 18 }}>{s.emoji}</span>
-                    <span style={{ fontSize: 10, color: dayData.supplements?.[s.id] ? 'white' : 'rgba(255,255,255,0.5)' }}>{s.name}</span>
+                    <span style={{ fontSize: 10, color: dayData.supplements?.[s.id] ? 'white' : theme.textMuted }}>{s.name}</span>
                   </button>
                 ))}
               </div>
@@ -850,80 +872,51 @@ export default function CoachZen() {
 
             <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
               {['breakfast', 'fasting'].map(k => (
-                <button key={k} onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ flex: 1, padding: 2, borderRadius: 14, background: `linear-gradient(135deg, ${MEALS[k].colors[0]}, ${MEALS[k].colors[1]})`, border: 'none', cursor: 'pointer' }}>
-                  <div style={{ background: dayData?.habits?.[k] ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.95)', borderRadius: 12, padding: 10 }}>
+                <div key={k} style={{ flex: 1, padding: 2, borderRadius: 14, background: `linear-gradient(135deg, ${MEALS[k].colors[0]}, ${MEALS[k].colors[1]})` }}>
+                  <div style={{ background: dayData?.habits?.[k] ? theme.mealCardBgActive : theme.mealCardBg, borderRadius: 12, padding: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{dayData?.habits?.[k] ? '✓' : MEALS[k].emoji}</div>
-                      <div style={{ flex: 1, textAlign: 'left' }}>
-                        <p style={{ fontSize: 13, fontWeight: 'bold', margin: 0 }}>{MEALS[k].title}</p>
-                        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{MEALS[k].kcal} kcal • <span style={{ color: dayData?.habits?.[k] ? '#22c55e' : 'rgba(255,255,255,0.5)' }}>+{MEALS[k].points} pts</span></p>
+                      <button onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ width: 36, height: 36, borderRadius: 10, background: theme.buttonBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, border: 'none', cursor: 'pointer', color: dayData?.habits?.[k] ? '#22c55e' : theme.text }}>{dayData?.habits?.[k] ? '✓' : MEALS[k].emoji}</button>
+                      <div onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ flex: 1, textAlign: 'left', cursor: 'pointer' }}>
+                        <p style={{ fontSize: 13, fontWeight: 'bold', margin: 0, color: theme.text }}>{MEALS[k].title}</p>
+                        <p style={{ fontSize: 10, color: theme.textMuted, margin: 0 }}>{MEALS[k].kcal} kcal • <span style={{ color: dayData?.habits?.[k] ? '#22c55e' : theme.textMuted }}>+{MEALS[k].points} pts</span></p>
                       </div>
+                      <button onClick={() => fetchRecipes(k)} style={{ padding: '4px 8px', borderRadius: 6, background: 'transparent', border: `1px solid ${theme.cardBorder}`, cursor: 'pointer' }}><span style={{ fontSize: 12 }}>💡</span></button>
                     </div>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
 
-            {/* Fasting Timer */}
+            {/* Fasting Timer - Mini version on Today tab */}
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(6,182,212,0.1), rgba(8,145,178,0.1))', border: '1px solid rgba(6,182,212,0.2)', marginBottom: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 'bold', margin: 0 }}>⏱️ Timer Jeûne</p>
-                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>Objectif : {dayData?.fastingTimer?.goal || 16}h</p>
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {[16, 18, 20].map(h => (
-                    <button key={h} onClick={() => setDayData(p => ({ ...p, fastingTimer: { ...(p.fastingTimer || {}), goal: h } }))}
-                      style={{ padding: '4px 8px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11, background: (dayData?.fastingTimer?.goal || 16) === h ? '#06b6d4' : 'rgba(255,255,255,0.1)', color: 'white' }}>{h}h</button>
-                  ))}
-                </div>
-              </div>
-
-              {dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end ? (
-                <>
-                  <div style={{ textAlign: 'center', marginBottom: 12 }}>
-                    <p style={{ fontSize: 32, fontWeight: 'bold', margin: 0, fontFamily: 'monospace' }}>
-                      {Math.floor(fastingElapsed / 3600).toString().padStart(2, '0')}:{Math.floor((fastingElapsed % 3600) / 60).toString().padStart(2, '0')}:{(fastingElapsed % 60).toString().padStart(2, '0')}
-                    </p>
-                    <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0' }}>
-                      {fastingElapsed >= (dayData?.fastingTimer?.goal || 16) * 3600 ? '🎉 Objectif atteint !' : `Encore ${Math.max(0, Math.ceil(((dayData?.fastingTimer?.goal || 16) * 3600 - fastingElapsed) / 3600))}h`}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 24 }}>⏱️</span>
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 'bold', margin: 0, color: theme.text }}>Jeûne intermittent</p>
+                    <p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>
+                      {dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end
+                        ? `En cours: ${Math.floor(fastingElapsed / 3600)}h ${Math.floor((fastingElapsed % 3600) / 60)}min`
+                        : dayData?.fastingTimer?.end
+                          ? `✅ ${Math.floor((dayData.fastingTimer.end - dayData.fastingTimer.start) / 3600000)}h terminé`
+                          : `Objectif: ${dayData?.fastingTimer?.goal || 16}h`}
                     </p>
                   </div>
-                  <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.1)', marginBottom: 12, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', borderRadius: 4, background: fastingElapsed >= (dayData?.fastingTimer?.goal || 16) * 3600 ? '#22c55e' : 'linear-gradient(90deg, #06b6d4, #0891b2)', width: `${Math.min(100, (fastingElapsed / ((dayData?.fastingTimer?.goal || 16) * 3600)) * 100)}%`, transition: 'width 1s' }} />
-                  </div>
-                  <button onClick={() => setDayData(p => ({ ...p, fastingTimer: { ...(p.fastingTimer || {}), end: Date.now() } }))}
-                    style={{ width: '100%', padding: 12, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #ef4444, #f97316)', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
-                    Terminer le jeûne
-                  </button>
-                </>
-              ) : dayData?.fastingTimer?.end ? (
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ fontSize: 14, color: '#22c55e', margin: 0 }}>✅ Jeûne terminé</p>
-                  <p style={{ fontSize: 24, fontWeight: 'bold', margin: '8px 0' }}>
-                    {Math.floor((dayData.fastingTimer.end - dayData.fastingTimer.start) / 3600000)}h {Math.floor(((dayData.fastingTimer.end - dayData.fastingTimer.start) % 3600000) / 60000)}min
-                  </p>
-                  <button onClick={() => setDayData(p => ({ ...p, fastingTimer: { goal: p.fastingTimer?.goal || 16, start: null, end: null } }))}
-                    style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', cursor: 'pointer', fontSize: 12 }}>
-                    Réinitialiser
-                  </button>
                 </div>
-              ) : (
-                <button onClick={() => setDayData(p => ({ ...p, fastingTimer: { ...(p.fastingTimer || {}), start: Date.now(), end: null } }))}
-                  style={{ width: '100%', padding: 14, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #06b6d4, #0891b2)', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: 16 }}>
-                  🚀 Commencer le jeûne
+                <button onClick={() => setTab('fasting')} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#06b6d4', color: 'white', cursor: 'pointer', fontSize: 12, fontWeight: 'bold' }}>
+                  Ouvrir
                 </button>
-              )}
+              </div>
             </div>
 
             {Object.entries(MEALS).filter(([k]) => !['breakfast', 'fasting'].includes(k)).map(([k, m]) => (
               <div key={k} style={{ width: '100%', padding: 3, borderRadius: 18, background: `linear-gradient(135deg, ${m.colors[0]}, ${m.colors[1]})`, marginBottom: 10 }}>
-                <div style={{ background: dayData?.habits?.[k] ? 'rgba(255,255,255,0.15)' : 'rgba(15,23,42,0.95)', borderRadius: 15, padding: 14 }}>
+                <div style={{ background: dayData?.habits?.[k] ? theme.mealCardBgActive : theme.mealCardBg, borderRadius: 15, padding: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <button onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, border: 'none', cursor: 'pointer' }}>{dayData?.habits?.[k] ? '✓' : m.emoji}</button>
-                    <div onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ flex: 1, textAlign: 'left', cursor: 'pointer' }}><p style={{ fontSize: 16, fontWeight: 'bold', margin: 0 }}>{m.title}</p><p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{m.time} • {m.kcal} kcal</p></div>
-                    <button onClick={() => fetchRecipes(k)} style={{ padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.1)', border: 'none', cursor: 'pointer', marginRight: 6 }}><span style={{ fontSize: 12 }}>💡</span></button>
-                    <div onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ padding: '6px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.1)', cursor: 'pointer' }}><span style={{ fontSize: 14, fontWeight: 'bold' }}>{dayData?.habits?.[k] ? '✓' : '+20'}</span></div>
+                    <button onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ width: 48, height: 48, borderRadius: 12, background: theme.buttonBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, border: 'none', cursor: 'pointer', color: dayData?.habits?.[k] ? '#22c55e' : theme.text }}>{dayData?.habits?.[k] ? '✓' : m.emoji}</button>
+                    <div onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ flex: 1, textAlign: 'left', cursor: 'pointer' }}><p style={{ fontSize: 16, fontWeight: 'bold', margin: 0, color: theme.text }}>{m.title}</p><p style={{ fontSize: 12, color: theme.textMuted, margin: 0 }}>{m.time} • {m.kcal} kcal</p></div>
+                    <button onClick={() => fetchRecipes(k)} style={{ padding: '6px 10px', borderRadius: 8, background: 'transparent', border: `1px solid ${theme.cardBorder}`, cursor: 'pointer', marginRight: 6 }}><span style={{ fontSize: 12 }}>💡</span></button>
+                    <div onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ padding: '6px 12px', borderRadius: 10, background: theme.buttonBg, cursor: 'pointer' }}><span style={{ fontSize: 14, fontWeight: 'bold', color: dayData?.habits?.[k] ? '#22c55e' : theme.text }}>{dayData?.habits?.[k] ? '✓' : '+20'}</span></div>
                   </div>
                 </div>
               </div>
@@ -931,33 +924,33 @@ export default function CoachZen() {
 
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(34,197,94,0.1), rgba(16,185,129,0.1))', border: '1px solid rgba(34,197,94,0.2)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <div><p style={{ fontSize: 14, fontWeight: 'bold', margin: 0 }}>🥗 Repas libres</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>📷 Photo ou texte</p></div>
-                <button onClick={() => setShowFoodModal(true)} style={{ background: 'linear-gradient(135deg, #22c55e, #10b981)', border: 'none', borderRadius: 10, padding: '8px 14px', cursor: 'pointer' }}><span style={{ fontSize: 12, fontWeight: 'bold' }}>+ Ajouter</span></button>
+                <div><p style={{ fontSize: 14, fontWeight: 'bold', margin: 0, color: theme.text }}>🥗 Repas libres</p><p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>📷 Photo ou texte</p></div>
+                <button onClick={() => setShowFoodModal(true)} style={{ background: 'linear-gradient(135deg, #22c55e, #10b981)', border: 'none', borderRadius: 10, padding: '8px 14px', cursor: 'pointer' }}><span style={{ fontSize: 12, fontWeight: 'bold', color: 'white' }}>+ Ajouter</span></button>
               </div>
               {dayData.customMeals?.length > 0 ? dayData.customMeals.map(meal => (
-                <div key={meal.id} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 12, marginBottom: 8 }}>
+                <div key={meal.id} style={{ background: darkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)', borderRadius: 12, padding: 12, marginBottom: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span>{meal.isHealthy ? '✅' : '⚠️'}</span><span style={{ fontWeight: 'bold' }}>{meal.name}</span></div>
-                      <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '4px 0 0' }}>{meal.details}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span>{meal.isHealthy ? '✅' : '⚠️'}</span><span style={{ fontWeight: 'bold', color: theme.text }}>{meal.name}</span></div>
+                      <p style={{ fontSize: 11, color: theme.textMuted, margin: '4px 0 0' }}>{meal.details}</p>
                       <div style={{ display: 'flex', gap: 12, marginTop: 6 }}><span style={{ fontSize: 12, color: '#22c55e' }}>{meal.kcal} kcal</span><span style={{ fontSize: 12, color: meal.points >= 10 ? '#22c55e' : '#f59e0b' }}>+{meal.points} pts</span></div>
                     </div>
                     <button onClick={() => removeCustomMeal(meal.id)} style={{ background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 6, width: 28, height: 28, cursor: 'pointer', color: '#ef4444' }}>×</button>
                   </div>
                 </div>
-              )) : <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'center', margin: 0 }}>Aucun repas libre</p>}
+              )) : <p style={{ fontSize: 12, color: theme.textVeryFaint, textAlign: 'center', margin: 0 }}>Aucun repas libre</p>}
             </div>
 
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(249,115,22,0.1))', border: '1px solid rgba(239,68,68,0.2)' }}>
-              <p style={{ fontSize: 14, fontWeight: 'bold', margin: '0 0 12px' }}>🍔 Écarts (-10 pts)</p>
+              <p style={{ fontSize: 14, fontWeight: 'bold', margin: '0 0 12px', color: theme.text }}>🍔 Écarts (-10 pts)</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                 {ECARTS.map(e => (
-                  <div key={e.id} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 10, textAlign: 'center' }}>
+                  <div key={e.id} style={{ background: darkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)', borderRadius: 12, padding: 10, textAlign: 'center' }}>
                     <span style={{ fontSize: 24 }}>{e.emoji}</span>
-                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '4px 0' }}>{e.kcal} kcal</p>
+                    <p style={{ fontSize: 11, color: theme.textMuted, margin: '4px 0' }}>{e.kcal} kcal</p>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                      <button onClick={() => setDayData(p => ({ ...p, ecarts: { ...(p.ecarts || {}), [e.id]: Math.max(0, (p.ecarts?.[e.id] || 0) - 1) } }))} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 16, cursor: 'pointer' }}>−</button>
-                      <span style={{ fontSize: 18, fontWeight: 'bold', color: (dayData.ecarts?.[e.id] || 0) > 0 ? e.color : 'white' }}>{dayData.ecarts?.[e.id] || 0}</span>
+                      <button onClick={() => setDayData(p => ({ ...p, ecarts: { ...(p.ecarts || {}), [e.id]: Math.max(0, (p.ecarts?.[e.id] || 0) - 1) } }))} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: theme.buttonBg, color: theme.text, fontSize: 16, cursor: 'pointer' }}>−</button>
+                      <span style={{ fontSize: 18, fontWeight: 'bold', color: (dayData.ecarts?.[e.id] || 0) > 0 ? e.color : theme.text }}>{dayData.ecarts?.[e.id] || 0}</span>
                       <button onClick={() => setDayData(p => ({ ...p, ecarts: { ...(p.ecarts || {}), [e.id]: (p.ecarts?.[e.id] || 0) + 1 } }))} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: `${e.color}40`, color: 'white', fontSize: 16, cursor: 'pointer' }}>+</button>
                     </div>
                   </div>
@@ -967,60 +960,150 @@ export default function CoachZen() {
 
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.1))', border: '1px solid rgba(251,191,36,0.2)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <div><p style={{ fontSize: 14, fontWeight: 'bold', margin: 0 }}>🙏 Gratitudes</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>+5 pts si 3 remplies</p></div>
-                <span style={{ fontSize: 14, color: (dayData.gratitudes || []).filter(g => g?.trim()).length >= 3 ? '#22c55e' : 'rgba(255,255,255,0.5)' }}>{(dayData.gratitudes || []).filter(g => g?.trim()).length}/3</span>
+                <div><p style={{ fontSize: 14, fontWeight: 'bold', margin: 0, color: theme.text }}>🙏 Gratitudes</p><p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>+5 pts si 3 remplies</p></div>
+                <span style={{ fontSize: 14, color: (dayData.gratitudes || []).filter(g => g?.trim()).length >= 3 ? '#22c55e' : theme.textMuted }}>{(dayData.gratitudes || []).filter(g => g?.trim()).length}/3</span>
               </div>
               {[0, 1, 2].map(i => (
-                <input key={i} value={dayData.gratitudes?.[i] || ''} onChange={e => updateGratitude(i, e.target.value)} placeholder={`${i + 1}. Je suis reconnaissant pour...`} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 16, marginBottom: 8, boxSizing: 'border-box' }} />
+                <input key={i} value={dayData.gratitudes?.[i] || ''} onChange={e => updateGratitude(i, e.target.value)} placeholder={`${i + 1}. Je suis reconnaissant pour...`} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: theme.inputBg, color: theme.text, fontSize: 16, marginBottom: 8, boxSizing: 'border-box' }} />
               ))}
             </div>
 
             <div style={card}>
-              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 10 }}>⚡ Énergie</p>
+              <p style={{ color: theme.textMuted, fontSize: 14, marginBottom: 10 }}>⚡ Énergie</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
                 {[{ v: 1, e: '😴', c: '#ef4444' }, { v: 2, e: '😔', c: '#f97316' }, { v: 3, e: '😐', c: '#eab308' }, { v: 4, e: '🙂', c: '#22c55e' }, { v: 5, e: '💪', c: '#14b8a6' }].map(l => (
-                  <button key={l.v} onClick={() => setDayData(p => ({ ...p, energy: l.v }))} style={{ padding: 12, borderRadius: 12, border: 'none', cursor: 'pointer', background: dayData.energy === l.v ? l.c : 'rgba(255,255,255,0.05)', fontSize: 24 }}>{l.e}</button>
+                  <button key={l.v} onClick={() => setDayData(p => ({ ...p, energy: l.v }))} style={{ padding: 12, borderRadius: 12, border: 'none', cursor: 'pointer', background: dayData.energy === l.v ? l.c : theme.buttonBg, fontSize: 24 }}>{l.e}</button>
                 ))}
               </div>
             </div>
 
             <div style={card}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ color: 'rgba(255,255,255,0.6)' }}>🌙 Sommeil</span><span style={{ fontWeight: 'bold' }}>{dayData.sleep || 7}h</span></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ color: theme.textMuted }}>🌙 Sommeil</span><span style={{ fontWeight: 'bold', color: theme.text }}>{dayData.sleep || 7}h</span></div>
               <input type="range" min={0} max={9} step={0.5} value={dayData.sleep || 7} onChange={e => setDayData(p => ({ ...p, sleep: Number(e.target.value) }))} style={{ width: '100%' }} />
             </div>
 
             <div style={card}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ color: 'rgba(255,255,255,0.6)' }}>😴 Sieste</span><span style={{ fontWeight: 'bold' }}>{dayData.nap || 0} min</span></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ color: theme.textMuted }}>😴 Sieste</span><span style={{ fontWeight: 'bold', color: theme.text }}>{dayData.nap || 0} min</span></div>
               <input type="range" min={0} max={120} step={15} value={dayData.nap || 0} onChange={e => setDayData(p => ({ ...p, nap: Number(e.target.value) }))} style={{ width: '100%' }} />
             </div>
 
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginBottom: 8 }}>🏃 Activité (+5 pts)</p>
+            <p style={{ color: theme.textFaint, fontSize: 12, marginBottom: 8 }}>🏃 Activité (+5 pts)</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
               {[{ key: 'workout', emoji: '🏋️', label: 'Muscu', color: '#ec4899' }, { key: 'run', emoji: '🏃', label: 'Course', color: '#f59e0b' }, { key: 'walk', emoji: '🚶', label: 'Marche', color: '#06b6d4' }].map(m => (
-                <button key={m.key} onClick={() => updateMovement(m.key, !dayData.movement?.[m.key])} style={{ padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: dayData.movement?.[m.key] ? m.color : 'rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <button key={m.key} onClick={() => updateMovement(m.key, !dayData.movement?.[m.key])} style={{ padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: dayData.movement?.[m.key] ? m.color : theme.buttonBg, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                   <span style={{ fontSize: 24 }}>{m.emoji}</span>
-                  <span style={{ color: dayData.movement?.[m.key] ? 'white' : 'rgba(255,255,255,0.5)', fontSize: 12 }}>{m.label}</span>
+                  <span style={{ color: dayData.movement?.[m.key] ? 'white' : theme.textMuted, fontSize: 12 }}>{m.label}</span>
                 </button>
               ))}
             </div>
           </>
         )}
 
+        {tab === 'fasting' && (
+          <>
+            <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, color: theme.text }}>⏱️ Jeûne Intermittent</h1>
+
+            {/* Timer central */}
+            <div style={{ ...card, textAlign: 'center', padding: 30 }}>
+              {/* Cercle de progression */}
+              <div style={{ width: 200, height: 200, margin: '0 auto 20px', position: 'relative' }}>
+                <svg width="200" height="200" style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx="100" cy="100" r="90" fill="none" stroke={theme.progressBg} strokeWidth="12" />
+                  <circle cx="100" cy="100" r="90" fill="none" stroke={fastingElapsed >= (dayData?.fastingTimer?.goal || 16) * 3600 ? '#22c55e' : '#06b6d4'} strokeWidth="12" strokeLinecap="round"
+                    strokeDasharray={565.5}
+                    strokeDashoffset={565.5 - (Math.min(1, fastingElapsed / ((dayData?.fastingTimer?.goal || 16) * 3600)) * 565.5)} />
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <p style={{ fontSize: 36, fontWeight: 'bold', margin: 0, fontFamily: 'monospace', color: theme.text }}>
+                    {dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end
+                      ? `${Math.floor(fastingElapsed / 3600).toString().padStart(2, '0')}:${Math.floor((fastingElapsed % 3600) / 60).toString().padStart(2, '0')}`
+                      : dayData?.fastingTimer?.end
+                        ? `${Math.floor((dayData.fastingTimer.end - dayData.fastingTimer.start) / 3600000)}h`
+                        : '00:00'}
+                  </p>
+                  <p style={{ fontSize: 12, color: theme.textMuted, margin: '4px 0 0' }}>
+                    {dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end
+                      ? fastingElapsed >= (dayData?.fastingTimer?.goal || 16) * 3600 ? '🎉 Objectif atteint !' : `Objectif: ${dayData?.fastingTimer?.goal || 16}h`
+                      : dayData?.fastingTimer?.end ? '✅ Terminé' : `Objectif: ${dayData?.fastingTimer?.goal || 16}h`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Objectif sélectionnable */}
+              <p style={{ fontSize: 12, color: theme.textMuted, margin: '0 0 10px' }}>Choisir la durée :</p>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
+                {[12, 14, 16, 18, 20, 24, 36, 48].map(h => (
+                  <button key={h} onClick={() => setDayData(p => ({ ...p, fastingTimer: { ...(p.fastingTimer || {}), goal: h } }))}
+                    style={{ padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 'bold', background: (dayData?.fastingTimer?.goal || 16) === h ? '#06b6d4' : theme.buttonBg, color: (dayData?.fastingTimer?.goal || 16) === h ? 'white' : theme.text }}>{h}h</button>
+                ))}
+              </div>
+
+              {/* Bouton START/STOP */}
+              {dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end ? (
+                <button onClick={() => setDayData(p => ({ ...p, fastingTimer: { ...(p.fastingTimer || {}), end: Date.now() }, habits: { ...(p.habits || {}), fasting: true } }))}
+                  style={{ width: '100%', padding: 16, borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #ef4444, #f97316)', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: 18 }}>
+                  ⏹️ Terminer le jeûne
+                </button>
+              ) : dayData?.fastingTimer?.end ? (
+                <button onClick={() => setDayData(p => ({ ...p, fastingTimer: { goal: p.fastingTimer?.goal || 16, start: null, end: null } }))}
+                  style={{ width: '100%', padding: 16, borderRadius: 12, border: 'none', background: theme.buttonBg, color: theme.text, fontWeight: 'bold', cursor: 'pointer', fontSize: 16 }}>
+                  🔄 Nouveau jeûne
+                </button>
+              ) : (
+                <button onClick={() => setDayData(p => ({ ...p, fastingTimer: { ...(p.fastingTimer || {}), start: Date.now(), end: null } }))}
+                  style={{ width: '100%', padding: 16, borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #06b6d4, #0891b2)', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: 18 }}>
+                  🚀 Commencer le jeûne
+                </button>
+              )}
+            </div>
+
+            {/* Infos du jeûne en cours */}
+            {dayData?.fastingTimer?.start && (
+              <div style={{ ...card, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ background: theme.buttonBg, borderRadius: 12, padding: 12, textAlign: 'center' }}>
+                  <p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>Début</p>
+                  <p style={{ fontSize: 16, fontWeight: 'bold', margin: '4px 0 0', color: theme.text }}>{new Date(dayData.fastingTimer.start).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+                </div>
+                <div style={{ background: theme.buttonBg, borderRadius: 12, padding: 12, textAlign: 'center' }}>
+                  <p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>Fin prévue</p>
+                  <p style={{ fontSize: 16, fontWeight: 'bold', margin: '4px 0 0', color: '#06b6d4' }}>{new Date(dayData.fastingTimer.start + (dayData?.fastingTimer?.goal || 16) * 3600000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Stats rapides */}
+            <div style={{ ...card, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              <div style={{ background: 'rgba(6,182,212,0.1)', borderRadius: 12, padding: 12, textAlign: 'center' }}>
+                <p style={{ fontSize: 20, fontWeight: 'bold', color: '#06b6d4', margin: 0 }}>{dayData?.fastingTimer?.goal || 16}h</p>
+                <p style={{ fontSize: 10, color: theme.textMuted, margin: '4px 0 0' }}>Objectif</p>
+              </div>
+              <div style={{ background: 'rgba(139,92,246,0.1)', borderRadius: 12, padding: 12, textAlign: 'center' }}>
+                <p style={{ fontSize: 20, fontWeight: 'bold', color: '#8b5cf6', margin: 0 }}>{Object.values(allData || {}).filter(d => d.habits?.fasting).length}</p>
+                <p style={{ fontSize: 10, color: theme.textMuted, margin: '4px 0 0' }}>Jeûnes réussis</p>
+              </div>
+              <div style={{ background: 'rgba(34,197,94,0.1)', borderRadius: 12, padding: 12, textAlign: 'center' }}>
+                <p style={{ fontSize: 20, fontWeight: 'bold', color: '#22c55e', margin: 0 }}>+20</p>
+                <p style={{ fontSize: 10, color: theme.textMuted, margin: '4px 0 0' }}>Points</p>
+              </div>
+            </div>
+          </>
+        )}
+
         {tab === 'week' && (
           <>
-            <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 14 }}>Semaine</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 14, color: theme.text }}>Semaine</h1>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-              <div style={{ background: '#8b5cf6', borderRadius: 16, padding: 16, textAlign: 'center' }}><p style={{ fontSize: 32, fontWeight: 'bold', margin: 0 }}>{streak}</p><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>🔥 streak</p></div>
-              <div style={{ background: '#06b6d4', borderRadius: 16, padding: 16, textAlign: 'center' }}><p style={{ fontSize: 32, fontWeight: 'bold', margin: 0 }}>{monthAvg}</p><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>moy/30j</p></div>
+              <div style={{ background: '#8b5cf6', borderRadius: 16, padding: 16, textAlign: 'center' }}><p style={{ fontSize: 32, fontWeight: 'bold', margin: 0, color: 'white' }}>{streak}</p><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>🔥 streak</p></div>
+              <div style={{ background: '#06b6d4', borderRadius: 16, padding: 16, textAlign: 'center' }}><p style={{ fontSize: 32, fontWeight: 'bold', margin: 0, color: 'white' }}>{monthAvg}</p><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>moy/30j</p></div>
             </div>
             <div style={card}>
-              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginBottom: 10 }}>📅 Clique pour éditer</p>
+              <p style={{ color: theme.textMuted, fontSize: 12, marginBottom: 10 }}>📅 Clique pour éditer</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
                 {last14Days.map((d, i) => { const k = formatDate(d); const data = allData?.[k]; const s = data ? calcScore(data) : 0; return (
                   <button key={i} onClick={() => { setSelectedDate(k); setTab('today'); }} style={{ textAlign: 'center', padding: 6, borderRadius: 10, background: k === selectedDate ? '#8b5cf6' : 'transparent', border: 'none', cursor: 'pointer' }}>
-                    <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', margin: 0 }}>{getDayName(d)}</p>
-                    <p style={{ fontSize: 12, margin: '3px 0' }}>{d.getDate()}</p>
-                    <div style={{ width: 26, height: 26, margin: '0 auto', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 'bold', background: !data ? 'rgba(255,255,255,0.05)' : s >= 80 ? '#10b981' : s >= 50 ? '#f59e0b' : '#ef4444' }}>{data ? s : '–'}</div>
+                    <p style={{ fontSize: 9, color: theme.textFaint, margin: 0 }}>{getDayName(d)}</p>
+                    <p style={{ fontSize: 12, margin: '3px 0', color: k === selectedDate ? 'white' : theme.text }}>{d.getDate()}</p>
+                    <div style={{ width: 26, height: 26, margin: '0 auto', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 'bold', color: 'white', background: !data ? theme.buttonBg : s >= 80 ? '#10b981' : s >= 50 ? '#f59e0b' : '#ef4444' }}>{data ? s : '–'}</div>
                   </button>
                 ); })}
               </div>
@@ -1030,16 +1113,16 @@ export default function CoachZen() {
 
         {tab === 'plan' && (
           <>
-            <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 14 }}>Mon Plan</h1>
-            <div style={card}><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, margin: 0 }}>Total: <strong style={{ color: '#10b981' }}>2650 kcal</strong> • TDEE: <strong style={{ color: '#06b6d4' }}>{tdee} kcal</strong></p></div>
+            <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 14, color: theme.text }}>Mon Plan</h1>
+            <div style={card}><p style={{ color: theme.textMuted, fontSize: 14, margin: 0 }}>Total: <strong style={{ color: '#10b981' }}>2650 kcal</strong> • TDEE: <strong style={{ color: '#06b6d4' }}>{tdee} kcal</strong></p></div>
             {Object.entries(MEALS).filter(([k]) => k !== 'fasting').map(([k, m]) => (
               <div key={k} style={{ background: `linear-gradient(135deg, ${m.colors[0]}, ${m.colors[1]})`, borderRadius: 16, padding: 14, marginBottom: 10 }}>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                   <div style={{ width: 50, height: 50, borderRadius: 12, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 26 }}>{m.emoji}</span></div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><p style={{ fontSize: 16, fontWeight: 'bold', margin: 0 }}>{m.title}</p><span style={{ fontSize: 12, background: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: 8 }}>{m.kcal} kcal</span></div>
-                    <p style={{ fontSize: 11, margin: '4px 0 0', opacity: 0.8 }}>{m.time}</p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>{m.items.map((item, i) => (<span key={i} style={{ fontSize: 10, background: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: 6 }}>{item}</span>))}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><p style={{ fontSize: 16, fontWeight: 'bold', margin: 0, color: 'white' }}>{m.title}</p><span style={{ fontSize: 12, background: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: 8, color: 'white' }}>{m.kcal} kcal</span></div>
+                    <p style={{ fontSize: 11, margin: '4px 0 0', color: 'rgba(255,255,255,0.8)' }}>{m.time}</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>{m.items.map((item, i) => (<span key={i} style={{ fontSize: 10, background: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: 6, color: 'white' }}>{item}</span>))}</div>
                   </div>
                 </div>
               </div>
@@ -1049,41 +1132,41 @@ export default function CoachZen() {
 
         {tab === 'stats' && (
           <>
-            <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 14 }}>Profil</h1>
-            
+            <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 14, color: theme.text }}>Profil</h1>
+
             {/* User info */}
             <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ width: 40, height: 40, borderRadius: 20, background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: 18 }}>{user?.displayName?.[0] || user?.email?.[0] || '?'}</span>
+                  <span style={{ fontSize: 18, color: 'white' }}>{user?.displayName?.[0] || user?.email?.[0] || '?'}</span>
                 </div>
                 <div>
-                  <p style={{ fontSize: 14, fontWeight: 'bold', margin: 0 }}>{user?.displayName || 'Utilisateur'}</p>
-                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{user?.email}</p>
+                  <p style={{ fontSize: 14, fontWeight: 'bold', margin: 0, color: theme.text }}>{user?.displayName || 'Utilisateur'}</p>
+                  <p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>{user?.email}</p>
                 </div>
               </div>
               <button onClick={handleLogout} style={{ background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 8, padding: '8px 12px', cursor: 'pointer', color: '#ef4444', fontSize: 12 }}>Déconnexion</button>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
-              <div style={{ background: '#10b981', borderRadius: 14, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 26, fontWeight: 'bold', margin: 0 }}>{totalDays}</p><p style={{ fontSize: 11, margin: 0, opacity: 0.8 }}>jours</p></div>
-              <div style={{ background: '#8b5cf6', borderRadius: 14, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 26, fontWeight: 'bold', margin: 0 }}>{streak}</p><p style={{ fontSize: 11, margin: 0, opacity: 0.8 }}>🔥 streak</p></div>
-              <div style={{ background: '#f59e0b', borderRadius: 14, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 26, fontWeight: 'bold', margin: 0 }}>{monthAvg}</p><p style={{ fontSize: 11, margin: 0, opacity: 0.8 }}>moy</p></div>
+              <div style={{ background: '#10b981', borderRadius: 14, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 26, fontWeight: 'bold', margin: 0, color: 'white' }}>{totalDays}</p><p style={{ fontSize: 11, margin: 0, color: 'rgba(255,255,255,0.8)' }}>jours</p></div>
+              <div style={{ background: '#8b5cf6', borderRadius: 14, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 26, fontWeight: 'bold', margin: 0, color: 'white' }}>{streak}</p><p style={{ fontSize: 11, margin: 0, color: 'rgba(255,255,255,0.8)' }}>🔥 streak</p></div>
+              <div style={{ background: '#f59e0b', borderRadius: 14, padding: 12, textAlign: 'center' }}><p style={{ fontSize: 26, fontWeight: 'bold', margin: 0, color: 'white' }}>{monthAvg}</p><p style={{ fontSize: 11, margin: 0, color: 'rgba(255,255,255,0.8)' }}>moy</p></div>
             </div>
 
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(236,72,153,0.1))', border: '1px solid rgba(139,92,246,0.2)' }}>
-              <p style={{ fontSize: 12, fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>🎯 OBJECTIF</p>
+              <p style={{ fontSize: 12, fontWeight: 'bold', color: theme.textMuted, margin: '0 0 10px' }}>🎯 OBJECTIF</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
-                <div style={{ flex: 1 }}><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>Actuel</p><p style={{ fontSize: 28, fontWeight: 'bold', margin: 0 }}>{profile.poids} kg</p></div>
-                <span style={{ fontSize: 24, color: 'rgba(255,255,255,0.3)' }}>→</span>
-                <div style={{ flex: 1, textAlign: 'right' }}><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: 0 }}>Objectif</p><p style={{ fontSize: 28, fontWeight: 'bold', margin: 0, color: '#22c55e' }}>{profile.objectifPoids} kg</p></div>
+                <div style={{ flex: 1 }}><p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>Actuel</p><p style={{ fontSize: 28, fontWeight: 'bold', margin: 0, color: theme.text }}>{profile.poids} kg</p></div>
+                <span style={{ fontSize: 24, color: theme.textVeryFaint }}>→</span>
+                <div style={{ flex: 1, textAlign: 'right' }}><p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>Objectif</p><p style={{ fontSize: 28, fontWeight: 'bold', margin: 0, color: '#22c55e' }}>{profile.objectifPoids} kg</p></div>
               </div>
-              {prediction?.date && <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: 10 }}><p style={{ fontSize: 12, color: '#22c55e', margin: 0 }}>📈 {prediction.message} → {prediction.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</p></div>}
+              {prediction?.date && <div style={{ background: darkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)', borderRadius: 10, padding: 10 }}><p style={{ fontSize: 12, color: '#22c55e', margin: 0 }}>📈 {prediction.message} → {prediction.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</p></div>}
             </div>
 
             {weightChartData.length > 1 && (
               <div style={card}>
-                <p style={{ fontSize: 12, fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>📊 ÉVOLUTION</p>
+                <p style={{ fontSize: 12, fontWeight: 'bold', color: theme.textMuted, margin: '0 0 10px' }}>📊 ÉVOLUTION</p>
                 <div style={{ height: 100, display: 'flex', alignItems: 'flex-end', gap: 2 }}>
                   {weightChartData.map((w, i) => (
                     <div key={i} style={{ flex: 1, height: `${w.percent}%`, minHeight: 4, background: 'linear-gradient(180deg, #8b5cf6, #ec4899)', borderRadius: 2 }} />
@@ -1092,24 +1175,24 @@ export default function CoachZen() {
               </div>
             )}
 
-            <button onClick={() => { setModalWeight(profile.poids); setShowWeightModal(true); }} style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: '#06b6d4', marginBottom: 14 }}><span style={{ fontSize: 14, fontWeight: 'bold' }}>⚖️ Enregistrer poids</span></button>
+            <button onClick={() => { setModalWeight(profile.poids); setShowWeightModal(true); }} style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', background: '#06b6d4', marginBottom: 14, color: 'white' }}><span style={{ fontSize: 14, fontWeight: 'bold' }}>⚖️ Enregistrer poids</span></button>
 
             <div style={card}>
-              <p style={{ fontSize: 12, fontWeight: 'bold', color: 'rgba(255,255,255,0.6)', margin: '0 0 10px' }}>⚙️ PROFIL</p>
+              <p style={{ fontSize: 12, fontWeight: 'bold', color: theme.textMuted, margin: '0 0 10px' }}>⚙️ PROFIL</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div><label style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Poids</label><input type="number" value={profile.poids} onChange={e => setProfile(p => ({ ...p, poids: Number(e.target.value) || 75 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', marginTop: 4, boxSizing: 'border-box', fontSize: 16 }} /></div>
+                <div><label style={{ fontSize: 11, color: theme.textMuted }}>Poids</label><input type="number" value={profile.poids} onChange={e => setProfile(p => ({ ...p, poids: Number(e.target.value) || 75 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: theme.inputBg, color: theme.text, marginTop: 4, boxSizing: 'border-box', fontSize: 16 }} /></div>
                 <div><label style={{ fontSize: 11, color: '#22c55e' }}>🎯 Objectif</label><input type="number" value={profile.objectifPoids} onChange={e => setProfile(p => ({ ...p, objectifPoids: Number(e.target.value) || 70 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(34,197,94,0.2)', color: '#22c55e', marginTop: 4, boxSizing: 'border-box', fontSize: 16 }} /></div>
-                <div><label style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Taille</label><input type="number" value={profile.taille} onChange={e => setProfile(p => ({ ...p, taille: Number(e.target.value) || 175 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', marginTop: 4, boxSizing: 'border-box', fontSize: 16 }} /></div>
-                <div><label style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Âge</label><input type="number" value={profile.age} onChange={e => setProfile(p => ({ ...p, age: Number(e.target.value) || 30 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.1)', color: 'white', marginTop: 4, boxSizing: 'border-box', fontSize: 16 }} /></div>
+                <div><label style={{ fontSize: 11, color: theme.textMuted }}>Taille</label><input type="number" value={profile.taille} onChange={e => setProfile(p => ({ ...p, taille: Number(e.target.value) || 175 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: theme.inputBg, color: theme.text, marginTop: 4, boxSizing: 'border-box', fontSize: 16 }} /></div>
+                <div><label style={{ fontSize: 11, color: theme.textMuted }}>Âge</label><input type="number" value={profile.age} onChange={e => setProfile(p => ({ ...p, age: Number(e.target.value) || 30 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: theme.inputBg, color: theme.text, marginTop: 4, boxSizing: 'border-box', fontSize: 16 }} /></div>
               </div>
             </div>
           </>
         )}
       </div>
 
-      <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'rgba(15,23,42,0.98)', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-around', padding: '8px 0 24px', zIndex: 9999 }}>
-        {[{ id: 'today', icon: '🏠', label: "Aujourd'hui" }, { id: 'week', icon: '📅', label: 'Semaine' }, { id: 'plan', icon: '📖', label: 'Plan' }, { id: 'stats', icon: '⚙️', label: 'Profil' }].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 6 }}><div style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: tab === t.id ? '#8b5cf6' : 'transparent' }}><span style={{ fontSize: 18 }}>{t.icon}</span></div><span style={{ fontSize: 10, color: tab === t.id ? 'white' : 'rgba(255,255,255,0.4)' }}>{t.label}</span></button>
+      <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: theme.navBg, backdropFilter: 'blur(10px)', borderTop: `1px solid ${theme.cardBorder}`, display: 'flex', justifyContent: 'space-around', padding: '8px 0 24px', zIndex: 9999 }}>
+        {[{ id: 'today', icon: '🏠', label: "Aujourd'hui" }, { id: 'fasting', icon: '⏱️', label: 'Jeûne' }, { id: 'week', icon: '📅', label: 'Stats' }, { id: 'stats', icon: '⚙️', label: 'Profil' }].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 6 }}><div style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: tab === t.id ? '#8b5cf6' : 'transparent' }}><span style={{ fontSize: 18 }}>{t.icon}</span></div><span style={{ fontSize: 10, color: tab === t.id ? '#8b5cf6' : theme.textMuted }}>{t.label}</span></button>
         ))}
       </nav>
 
