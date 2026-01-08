@@ -753,6 +753,67 @@ export default function CoachZen() {
     return sorted.map(w => ({ ...w, percent: ((w.weight - min) / (max - min)) * 100 }));
   }, [weightHistory]);
 
+  // Enhanced stats for Stats tab
+  const enhancedStats = useMemo(() => {
+    const entries = Object.entries(allData || {}).sort((a, b) => b[0].localeCompare(a[0]));
+
+    // 7 derniers jours avec labels
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = formatDate(d);
+      const data = allData?.[key];
+      last7Days.push({
+        label: ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'][d.getDay()],
+        score: data ? calcScore(data) : 0
+      });
+    }
+
+    // Moyenne 7 jours
+    const scores7 = last7Days.map(d => d.score).filter(s => s > 0);
+    const avgScore = scores7.length ? Math.round(scores7.reduce((a,b) => a+b, 0) / scores7.length) : 0;
+
+    // Taux réussite global (score >= 80)
+    const allScores = entries.map(([_, d]) => calcScore(d));
+    const successRate = allScores.length ? Math.round(allScores.filter(s => s >= 80).length / allScores.length * 100) : 0;
+
+    // Évolution poids
+    const sortedWeights = [...weightHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const weightChange = sortedWeights.length >= 2
+      ? Number((sortedWeights[sortedWeights.length - 1].weight - sortedWeights[0].weight).toFixed(1))
+      : 0;
+
+    // Taux par habitude
+    const habitKeys = ['breakfast', 'lunch', 'snack', 'dinner', 'plannedTreat'];
+    const habitNames = { breakfast: 'Petit-déj', lunch: 'Déjeuner', snack: 'Collation', dinner: 'Dîner', plannedTreat: 'Plaisir planifié' };
+    const habitEmojis = { breakfast: '🍳', lunch: '🥗', snack: '🥜', dinner: '🍲', plannedTreat: '🍫' };
+    const habitRates = habitKeys.map(key => {
+      const total = entries.filter(([_, d]) => d.habits).length;
+      const done = entries.filter(([_, d]) => d.habits?.[key]).length;
+      return { name: habitNames[key], emoji: habitEmojis[key], rate: total ? Math.round(done / total * 100) : 0 };
+    });
+
+    // Records
+    const bestScore = allScores.length ? Math.max(...allScores) : 0;
+    const lowestWeight = sortedWeights.length ? Math.min(...sortedWeights.map(w => w.weight)) : null;
+
+    // Plus long streak (historique)
+    let longestStreak = 0;
+    let currentStreak = 0;
+    const sortedDates = Object.keys(allData || {}).sort();
+    for (const date of sortedDates) {
+      if (calcScore(allData[date]) >= 80) {
+        currentStreak++;
+        longestStreak = Math.max(longestStreak, currentStreak);
+      } else {
+        currentStreak = 0;
+      }
+    }
+
+    return { last7Days, avgScore, successRate, weightChange, habitRates, bestScore, longestStreak, lowestWeight };
+  }, [allData, weightHistory]);
+
   const container = { minHeight: '100dvh', background: theme.bg, color: theme.text, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', paddingBottom: 90, transition: 'background 0.3s, color 0.3s' };
   const content = { maxWidth: 500, margin: '0 auto', padding: '12px 16px 20px' };
   const card = { background: theme.card, borderRadius: 16, padding: 14, marginBottom: 12, border: `1px solid ${theme.cardBorder}`, boxShadow: theme.cardShadow, transition: 'background 0.3s, border 0.3s, box-shadow 0.3s' };
@@ -1091,13 +1152,51 @@ export default function CoachZen() {
 
         {tab === 'week' && (
           <>
-            <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 14, color: theme.text }}>Semaine</h1>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-              <div style={{ background: '#8b5cf6', borderRadius: 16, padding: 16, textAlign: 'center' }}><p style={{ fontSize: 32, fontWeight: 'bold', margin: 0, color: 'white' }}>{streak}</p><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>🔥 streak</p></div>
-              <div style={{ background: '#06b6d4', borderRadius: 16, padding: 16, textAlign: 'center' }}><p style={{ fontSize: 32, fontWeight: 'bold', margin: 0, color: 'white' }}>{monthAvg}</p><p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>moy/30j</p></div>
+            <h1 style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, color: theme.text }}>📊 Statistiques</h1>
+
+            {/* Section 1 : 4 cartes résumé */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 20 }}>
+              <div style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', borderRadius: 16, padding: 16, textAlign: 'center' }}>
+                <p style={{ fontSize: 28, fontWeight: 'bold', margin: 0, color: 'white' }}>{streak}</p>
+                <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, margin: '4px 0 0' }}>🔥 Streak jours</p>
+              </div>
+              <div style={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', borderRadius: 16, padding: 16, textAlign: 'center' }}>
+                <p style={{ fontSize: 28, fontWeight: 'bold', margin: 0, color: 'white' }}>{enhancedStats.avgScore}</p>
+                <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, margin: '4px 0 0' }}>📊 Moyenne 7j</p>
+              </div>
+              <div style={{ background: `linear-gradient(135deg, ${enhancedStats.weightChange <= 0 ? '#22c55e' : '#ef4444'}, ${enhancedStats.weightChange <= 0 ? '#16a34a' : '#dc2626'})`, borderRadius: 16, padding: 16, textAlign: 'center' }}>
+                <p style={{ fontSize: 28, fontWeight: 'bold', margin: 0, color: 'white' }}>{enhancedStats.weightChange > 0 ? '+' : ''}{enhancedStats.weightChange}</p>
+                <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, margin: '4px 0 0' }}>⚖️ Évolution kg</p>
+              </div>
+              <div style={{ background: 'linear-gradient(135deg, #06b6d4, #0891b2)', borderRadius: 16, padding: 16, textAlign: 'center' }}>
+                <p style={{ fontSize: 28, fontWeight: 'bold', margin: 0, color: 'white' }}>{enhancedStats.successRate}%</p>
+                <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, margin: '4px 0 0' }}>🎯 Réussite</p>
+              </div>
             </div>
+
+            {/* Section 2 : Graphique barres 7 jours */}
+            <div style={{ ...card, marginBottom: 20 }}>
+              <p style={{ fontSize: 14, fontWeight: 'bold', color: theme.text, margin: '0 0 16px' }}>Score des 7 derniers jours</p>
+              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: 100, gap: 8 }}>
+                {enhancedStats.last7Days.map((day, i) => (
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, color: theme.text, fontWeight: 'bold' }}>{day.score || ''}</span>
+                    <div style={{
+                      width: '100%',
+                      height: `${Math.max(day.score, 4)}%`,
+                      background: day.score >= 80 ? 'linear-gradient(180deg, #22c55e, #16a34a)' : day.score >= 50 ? 'linear-gradient(180deg, #8b5cf6, #7c3aed)' : day.score > 0 ? 'linear-gradient(180deg, #f59e0b, #d97706)' : theme.buttonBg,
+                      borderRadius: 4,
+                      minHeight: 4
+                    }} />
+                    <span style={{ fontSize: 10, color: theme.textMuted }}>{day.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Section 3 : Calendrier 14 jours */}
             <div style={card}>
-              <p style={{ color: theme.textMuted, fontSize: 12, marginBottom: 10 }}>📅 Clique pour éditer</p>
+              <p style={{ fontSize: 14, fontWeight: 'bold', color: theme.text, margin: '0 0 12px' }}>📅 Historique (clic pour éditer)</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
                 {last14Days.map((d, i) => { const k = formatDate(d); const data = allData?.[k]; const s = data ? calcScore(data) : 0; return (
                   <button key={i} onClick={() => { setSelectedDate(k); setTab('today'); }} style={{ textAlign: 'center', padding: 6, borderRadius: 10, background: k === selectedDate ? '#8b5cf6' : 'transparent', border: 'none', cursor: 'pointer' }}>
@@ -1106,6 +1205,63 @@ export default function CoachZen() {
                     <div style={{ width: 26, height: 26, margin: '0 auto', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 'bold', color: 'white', background: !data ? theme.buttonBg : s >= 80 ? '#10b981' : s >= 50 ? '#f59e0b' : '#ef4444' }}>{data ? s : '–'}</div>
                   </button>
                 ); })}
+              </div>
+            </div>
+
+            {/* Section 4 : Graphique poids */}
+            {weightChartData.length > 1 && (
+              <div style={card}>
+                <p style={{ fontSize: 14, fontWeight: 'bold', color: theme.text, margin: '0 0 12px' }}>📈 Évolution du poids</p>
+                <div style={{ height: 80, display: 'flex', alignItems: 'flex-end', gap: 2 }}>
+                  {weightChartData.map((w, i) => (
+                    <div key={i} style={{ flex: 1, height: `${w.percent}%`, minHeight: 4, background: 'linear-gradient(180deg, #8b5cf6, #ec4899)', borderRadius: 2 }} title={`${w.weight} kg`} />
+                  ))}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+                  <span style={{ fontSize: 10, color: theme.textMuted }}>{weightChartData[0]?.weight} kg</span>
+                  <span style={{ fontSize: 10, color: theme.textMuted }}>{weightChartData[weightChartData.length - 1]?.weight} kg</span>
+                </div>
+              </div>
+            )}
+
+            {/* Section 5 : Taux de complétion */}
+            <div style={card}>
+              <p style={{ fontSize: 14, fontWeight: 'bold', color: theme.text, margin: '0 0 14px' }}>✅ Taux de complétion</p>
+              {enhancedStats.habitRates.map(h => (
+                <div key={h.name} style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, color: theme.text }}>{h.emoji} {h.name}</span>
+                    <span style={{ fontSize: 13, color: theme.textMuted, fontWeight: 'bold' }}>{h.rate}%</span>
+                  </div>
+                  <div style={{ height: 8, background: theme.progressBg, borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${h.rate}%`, background: 'linear-gradient(90deg, #8b5cf6, #ec4899)', borderRadius: 4 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Section 6 : Records */}
+            <div style={card}>
+              <p style={{ fontSize: 14, fontWeight: 'bold', color: theme.text, margin: '0 0 14px' }}>🏆 Records personnels</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: theme.textMuted, fontSize: 13 }}>Meilleur score</span>
+                  <span style={{ color: '#22c55e', fontWeight: 'bold', fontSize: 16 }}>{enhancedStats.bestScore}/100</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: theme.textMuted, fontSize: 13 }}>Plus long streak</span>
+                  <span style={{ color: '#f59e0b', fontWeight: 'bold', fontSize: 16 }}>{enhancedStats.longestStreak} jours</span>
+                </div>
+                {enhancedStats.lowestWeight && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: theme.textMuted, fontSize: 13 }}>Poids le plus bas</span>
+                    <span style={{ color: '#8b5cf6', fontWeight: 'bold', fontSize: 16 }}>{enhancedStats.lowestWeight} kg</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: theme.textMuted, fontSize: 13 }}>Total jours suivis</span>
+                  <span style={{ color: '#06b6d4', fontWeight: 'bold', fontSize: 16 }}>{totalDays} jours</span>
+                </div>
               </div>
             </div>
           </>
@@ -1247,41 +1403,74 @@ export default function CoachZen() {
 
       {showRecipeModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={() => setShowRecipeModal(false)}>
-          <div style={{ background: '#1e293b', borderRadius: 20, padding: 20, maxWidth: 380, width: '100%', maxHeight: '80vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: theme.modalBg, borderRadius: 20, padding: 20, maxWidth: 420, width: '100%', maxHeight: '85vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 'bold', margin: 0 }}>💡 Idées recettes</h2>
-              <button onClick={() => setShowRecipeModal(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 24, cursor: 'pointer' }}>×</button>
+              <h2 style={{ fontSize: 20, fontWeight: 'bold', margin: 0, color: theme.text }}>💡 Idées recettes</h2>
+              <button onClick={() => setShowRecipeModal(false)} style={{ background: 'none', border: 'none', color: theme.textMuted, fontSize: 24, cursor: 'pointer' }}>×</button>
             </div>
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: '0 0 16px' }}>
+            <p style={{ fontSize: 12, color: theme.textMuted, margin: '0 0 16px' }}>
               {recipeMealType && MEALS[recipeMealType] ? `Pour votre ${MEALS[recipeMealType].title.toLowerCase()}` : 'Suggestions personnalisées'}
             </p>
             {recipeLoading ? (
               <div style={{ textAlign: 'center', padding: 40 }}>
-                <p style={{ color: 'rgba(255,255,255,0.5)' }}>🍳 Génération des recettes...</p>
+                <p style={{ color: theme.textMuted }}>🍳 Génération des recettes...</p>
               </div>
             ) : recipes.length === 0 ? (
-              <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', padding: 20 }}>Aucune recette disponible</p>
+              <p style={{ textAlign: 'center', color: theme.textMuted, padding: 20 }}>Aucune recette disponible</p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {recipes.map((recipe, idx) => (
-                  <div key={idx} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 14, border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                      <span style={{ fontSize: 24 }}>{recipe.emoji || '🍽️'}</span>
+                  <div key={idx} style={{ background: theme.card, borderRadius: 16, padding: 16, border: `1px solid ${theme.cardBorder}` }}>
+                    {/* Header avec emoji et nom */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                      <div style={{ width: 48, height: 48, borderRadius: 12, background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontSize: 24 }}>{recipe.emoji || '🍽️'}</span>
+                      </div>
                       <div style={{ flex: 1 }}>
-                        <p style={{ fontSize: 14, fontWeight: 'bold', margin: 0 }}>{recipe.name}</p>
-                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', margin: '2px 0 0' }}>⏱️ {recipe.prepTime} • 🔥 {recipe.calories} kcal</p>
+                        <p style={{ fontSize: 15, fontWeight: 'bold', margin: 0, color: theme.text }}>{recipe.name}</p>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                          <span style={{ fontSize: 11, background: 'rgba(6,182,212,0.2)', color: '#06b6d4', padding: '3px 8px', borderRadius: 6 }}>⏱️ {recipe.prepTime}{typeof recipe.prepTime === 'number' ? ' min' : ''}</span>
+                          <span style={{ fontSize: 11, background: 'rgba(249,115,22,0.2)', color: '#f97316', padding: '3px 8px', borderRadius: 6 }}>🔥 {recipe.kcal || recipe.calories} kcal</span>
+                        </div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {(recipe.ingredients || []).map((ing, i) => (
-                        <span key={i} style={{ fontSize: 11, background: 'rgba(139,92,246,0.2)', color: '#c4b5fd', padding: '4px 8px', borderRadius: 6 }}>{ing}</span>
-                      ))}
+
+                    {/* Ingrédients */}
+                    <div style={{ marginBottom: 12 }}>
+                      <p style={{ fontSize: 12, fontWeight: 'bold', color: theme.textMuted, margin: '0 0 8px' }}>📝 Ingrédients</p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {(recipe.ingredients || []).map((ing, i) => (
+                          <span key={i} style={{ fontSize: 11, background: 'rgba(139,92,246,0.15)', color: '#a78bfa', padding: '4px 10px', borderRadius: 8 }}>• {ing}</span>
+                        ))}
+                      </div>
                     </div>
+
+                    {/* Étapes */}
+                    {recipe.steps && recipe.steps.length > 0 && (
+                      <div style={{ marginBottom: 12 }}>
+                        <p style={{ fontSize: 12, fontWeight: 'bold', color: theme.textMuted, margin: '0 0 8px' }}>👨‍🍳 Préparation</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {recipe.steps.map((step, i) => (
+                            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                              <span style={{ width: 20, height: 20, borderRadius: 10, background: 'rgba(34,197,94,0.2)', color: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 'bold', flexShrink: 0 }}>{i + 1}</span>
+                              <p style={{ fontSize: 12, color: theme.text, margin: 0, lineHeight: 1.4 }}>{step}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tip du chef */}
+                    {recipe.tip && (
+                      <div style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: 10, padding: 10 }}>
+                        <p style={{ fontSize: 11, color: '#fbbf24', margin: 0, fontStyle: 'italic' }}>💡 {recipe.tip}</p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             )}
-            <button onClick={() => fetchRecipes(recipeMealType)} disabled={recipeLoading} style={{ width: '100%', marginTop: 16, padding: 14, borderRadius: 12, border: 'none', background: recipeLoading ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #8b5cf6, #ec4899)', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
+            <button onClick={() => fetchRecipes(recipeMealType)} disabled={recipeLoading} style={{ width: '100%', marginTop: 16, padding: 14, borderRadius: 12, border: 'none', background: recipeLoading ? theme.buttonBg : 'linear-gradient(135deg, #8b5cf6, #ec4899)', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
               {recipeLoading ? '...' : '🔄 Nouvelles idées'}
             </button>
           </div>

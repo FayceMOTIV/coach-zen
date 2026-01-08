@@ -4,46 +4,108 @@ const client = new Anthropic();
 
 export async function POST(request) {
   try {
-    const { score, habits, sleep, nap, energy, water, ecarts, movement, customMeals } = await request.json();
+    const { score, habits, sleep, nap, energy, water, ecarts, movement } = await request.json();
 
-    const habitsCompleted = habits ? Object.values(habits).filter(Boolean).length : 0;
-    const movementDone = movement ? Object.values(movement).filter(Boolean).length : 0;
-    const ecartsTotal = ecarts ? (ecarts.petit || 0) + (ecarts.moyen || 0) + (ecarts.gros || 0) : 0;
+    // Build detailed habits list
+    const habitNames = {
+      breakfast: 'Petit-déj',
+      fasting: 'Jeûne',
+      lunch: 'Déjeuner',
+      snack: 'Collation',
+      dinner: 'Dîner',
+      plannedTreat: 'Craquage planifié'
+    };
 
-    const prompt = `Tu es un coach nutrition bienveillant. Analyse ces données de la journée et donne une réponse en 1-2 phrases maximum.
+    const habitsList = Object.entries(habits || {}).map(([key, done]) => ({
+      name: habitNames[key] || key,
+      done
+    }));
 
-Données:
-- Score du jour: ${score}/100
-- Repas suivis: ${habitsCompleted}/6
-- Sommeil: ${sleep}h (sieste: ${nap}min)
-- Énergie: ${energy}/5
-- Eau: ${water} verres
-- Écarts: ${ecartsTotal}
-- Activité physique: ${movementDone} activité(s)
-- Repas libres: ${customMeals?.length || 0}
+    const doneHabits = habitsList.filter(h => h.done).map(h => h.name);
+    const missedHabits = habitsList.filter(h => !h.done).map(h => h.name);
 
-Instructions:
-1. Identifie LE point fort de la journée
-2. Identifie UN axe d'amélioration (si pertinent)
-3. Termine par une phrase de motivation courte et bienveillante
-4. Utilise des emojis
-5. Maximum 2 phrases, sois concis
+    // Build movement list
+    const movementNames = {
+      walk: 'Marche',
+      sport: 'Sport',
+      stretch: 'Étirements'
+    };
+    const movementList = Object.entries(movement || {})
+      .filter(([_, done]) => done)
+      .map(([key]) => movementNames[key] || key);
 
-Exemple de format: "Super journée avec ${habitsCompleted} repas suivis ! 💪 Pense à boire un peu plus d'eau demain. Tu gères !"`;
+    // Calculate ecarts
+    const petit = ecarts?.petit || 0;
+    const moyen = ecarts?.moyen || 0;
+    const gros = ecarts?.gros || 0;
+    const totalEcarts = petit + moyen + gros;
+
+    const prompt = `Coach bienveillant et direct. Analyse cette journée en 2 phrases MAX.
+
+DONNÉES :
+- Score : ${score}/100
+- Repas OK : ${doneHabits.join(', ') || 'aucun'}
+- Repas manqués : ${missedHabits.join(', ') || 'aucun'}
+- Sommeil : ${sleep}h
+- Sieste : ${nap} min
+- Énergie : ${energy}/5
+- Eau : ${water}/8 verres
+- Écarts : ${totalEcarts} (${petit}p/${moyen}m/${gros}g)
+- Sport : ${movementList.join(', ') || 'aucun'}
+
+RÈGLES :
+1. Phrase 1 : Constat SPÉCIFIQUE (cite les vrais chiffres)
+2. Phrase 2 : Conseil actionnable OU félicitation sincère
+3. Score >= 80 → Félicite
+4. Score < 50 → Encourage, propose UN truc simple
+5. Jamais culpabilisant, toujours bienveillant
+
+Exemples :
+- "5h de sommeil, ça explique ton énergie à 2. Ce soir, priorité au lit avant 23h."
+- "4 repas validés et une marche, super journée ! Continue demain."
+- "2 gros écarts, journée difficile. Demain, prépare ta collation à l'avance."
+
+Réponds UNIQUEMENT avec le JSON : { "analysis": "Phrase 1. Phrase 2." }`;
 
     const message = await client.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 150,
+      max_tokens: 200,
       messages: [{ role: "user", content: prompt }],
     });
 
-    const analysis = message.content[0]?.text || "Continue comme ça ! 💪";
+    const text = message.content[0]?.text || "";
 
-    return Response.json({ analysis });
+    // Try to parse JSON
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const data = JSON.parse(jsonMatch[0]);
+        if (data.analysis) {
+          return Response.json({ analysis: data.analysis });
+        }
+      }
+    } catch (parseError) {
+      // If JSON parsing fails, use the text directly if it looks like analysis
+      if (text.length < 300 && !text.includes('{')) {
+        return Response.json({ analysis: text.trim() });
+      }
+    }
+
+    // Generate contextual fallback based on actual data
+    let fallback = "";
+    if (score >= 80) {
+      fallback = `Score de ${score}/100, belle performance ! ${doneHabits.length} repas validés, continue sur cette lancée.`;
+    } else if (score >= 50) {
+      fallback = `${doneHabits.length} repas suivis aujourd'hui, c'est un bon début. ${sleep < 7 ? `Vise 7h de sommeil ce soir.` : `Garde ce rythme demain !`}`;
+    } else {
+      fallback = `Journée à ${score}/100, on a tous des jours comme ça. ${totalEcarts > 0 ? `Demain, prépare tes repas à l'avance.` : `Un pas à la fois, tu vas y arriver.`}`;
+    }
+
+    return Response.json({ analysis: fallback });
   } catch (error) {
     console.error("Daily analysis error:", error);
     return Response.json(
-      { analysis: "Continue tes efforts, tu es sur la bonne voie ! 💪" },
+      { analysis: "Continue tes efforts, chaque jour compte ! 💪" },
       { status: 200 }
     );
   }
