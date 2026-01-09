@@ -1,12 +1,12 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/api/coach/analyze/route": "app/api/coach/analyze/route.js",
   "/api/coach/food/route": "app/api/coach/food/route.js",
-  "/api/coach/weekly-report/route": "app/api/coach/weekly-report/route.js",
-  "/api/recipes/suggest/route": "app/api/recipes/suggest/route.js",
-  "/page": "app/page.js",
   "/api/coach/message/route": "app/api/coach/message/route.js",
-  "/api/coach/voice/route": "app/api/coach/voice/route.js",
+  "/api/coach/analyze/route": "app/api/coach/analyze/route.js",
+  "/page": "app/page.js",
+  "/api/recipes/suggest/route": "app/api/recipes/suggest/route.js",
   "/api/coach/daily-analysis/route": "app/api/coach/daily-analysis/route.js",
+  "/api/coach/voice/route": "app/api/coach/voice/route.js",
+  "/api/coach/weekly-report/route": "app/api/coach/weekly-report/route.js",
   "/api/widget/score/route": "app/api/widget/score/route.js"
 }
