@@ -855,7 +855,7 @@ export default function CoachZen() {
   }, [allData, weightHistory]);
 
   const container = { minHeight: '100dvh', background: theme.bg, color: theme.text, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', paddingBottom: 90, transition: 'background 0.3s, color 0.3s' };
-  const content = { maxWidth: 500, margin: '0 auto', padding: '12px 16px 20px' };
+  const content = { maxWidth: 500, margin: '0 auto', padding: '12px 16px 20px', overflowX: 'hidden' };
   const card = { background: theme.card, borderRadius: 16, padding: 14, marginBottom: 12, border: `1px solid ${theme.cardBorder}`, boxShadow: theme.cardShadow, transition: 'background 0.3s, border 0.3s, box-shadow 0.3s' };
 
   // Show loading while checking auth
@@ -1070,17 +1070,17 @@ export default function CoachZen() {
               )) : <p style={{ fontSize: 12, color: theme.textVeryFaint, textAlign: 'center', margin: 0 }}>Aucun repas libre</p>}
             </div>
 
-            <div style={{ ...card, background: 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(249,115,22,0.1))', border: '1px solid rgba(239,68,68,0.2)' }}>
+            <div style={{ ...card, background: 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(249,115,22,0.1))', border: '1px solid rgba(239,68,68,0.2)', overflow: 'hidden' }}>
               <p style={{ fontSize: 14, fontWeight: 'bold', margin: '0 0 12px', color: theme.text }}>🍔 Écarts (-10 pts)</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6, width: '100%' }}>
                 {ECARTS.map(e => (
-                  <div key={e.id} style={{ background: darkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)', borderRadius: 12, padding: 10, textAlign: 'center' }}>
-                    <span style={{ fontSize: 24 }}>{e.emoji}</span>
-                    <p style={{ fontSize: 11, color: theme.textMuted, margin: '4px 0' }}>{e.kcal} kcal</p>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                      <button onClick={() => setDayData(p => ({ ...p, ecarts: { ...(p.ecarts || {}), [e.id]: Math.max(0, (p.ecarts?.[e.id] || 0) - 1) } }))} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: theme.buttonBg, color: theme.text, fontSize: 16, cursor: 'pointer' }}>−</button>
-                      <span style={{ fontSize: 18, fontWeight: 'bold', color: (dayData.ecarts?.[e.id] || 0) > 0 ? e.color : theme.text }}>{dayData.ecarts?.[e.id] || 0}</span>
-                      <button onClick={() => setDayData(p => ({ ...p, ecarts: { ...(p.ecarts || {}), [e.id]: (p.ecarts?.[e.id] || 0) + 1 } }))} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: `${e.color}40`, color: 'white', fontSize: 16, cursor: 'pointer' }}>+</button>
+                  <div key={e.id} style={{ background: darkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)', borderRadius: 10, padding: 8, textAlign: 'center', minWidth: 0 }}>
+                    <span style={{ fontSize: 22 }}>{e.emoji}</span>
+                    <p style={{ fontSize: 10, color: theme.textMuted, margin: '2px 0', whiteSpace: 'nowrap' }}>{e.kcal} kcal</p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                      <button onClick={() => setDayData(p => ({ ...p, ecarts: { ...(p.ecarts || {}), [e.id]: Math.max(0, (p.ecarts?.[e.id] || 0) - 1) } }))} style={{ width: 26, height: 26, minWidth: 26, borderRadius: 6, border: 'none', background: theme.buttonBg, color: theme.text, fontSize: 14, cursor: 'pointer', padding: 0 }}>−</button>
+                      <span style={{ fontSize: 16, fontWeight: 'bold', minWidth: 20, color: (dayData.ecarts?.[e.id] || 0) > 0 ? e.color : theme.text }}>{dayData.ecarts?.[e.id] || 0}</span>
+                      <button onClick={() => setDayData(p => ({ ...p, ecarts: { ...(p.ecarts || {}), [e.id]: (p.ecarts?.[e.id] || 0) + 1 } }))} style={{ width: 26, height: 26, minWidth: 26, borderRadius: 6, border: 'none', background: `${e.color}40`, color: 'white', fontSize: 14, cursor: 'pointer', padding: 0 }}>+</button>
                     </div>
                   </div>
                 ))}
