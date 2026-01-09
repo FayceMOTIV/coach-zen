@@ -16,13 +16,19 @@ export async function POST(request) {
           content: [
             {
               type: "text",
-              text: `Analyse ce repas${description ? ` (description: ${description})` : ''}. Réponds en JSON strict:
+              text: `Analyse ce repas${description ? ` (description: ${description})` : ''}.
+
+IMPORTANT pour isHealthy: Juge la QUALITÉ des aliments, PAS la quantité.
+- Viande, poisson, oeufs, légumes, riz, pâtes, fruits = HEALTHY (même si grosse portion)
+- Fast-food, fritures, sodas, sucreries, ultra-transformé = NOT HEALTHY
+
+Réponds en JSON strict:
 {
   "success": true,
   "name": "Nom court du plat",
   "kcal": nombre (estimation calories),
-  "isHealthy": true/false,
-  "points": nombre 0-20 (20=très sain, 0=très gras/sucré),
+  "isHealthy": true/false (qualité pas quantité!),
+  "points": nombre 0-20 (20=aliments naturels, 0=ultra-transformé),
   "details": "Description courte des macros"
 }`
             },
@@ -38,13 +44,19 @@ export async function POST(request) {
       messages = [
         {
           role: "user",
-          content: `Analyse ce repas: "${description}". Réponds en JSON strict:
+          content: `Analyse ce repas: "${description}".
+
+IMPORTANT pour isHealthy: Juge la QUALITÉ des aliments, PAS la quantité.
+- Viande, poisson, oeufs, légumes, riz, pâtes, fruits = HEALTHY (même si grosse portion)
+- Fast-food, fritures, sodas, sucreries, ultra-transformé = NOT HEALTHY
+
+Réponds en JSON strict:
 {
   "success": true,
   "name": "Nom court du plat",
   "kcal": nombre (estimation calories),
-  "isHealthy": true/false,
-  "points": nombre 0-20 (20=très sain, 0=très gras/sucré),
+  "isHealthy": true/false (qualité pas quantité!),
+  "points": nombre 0-20 (20=aliments naturels, 0=ultra-transformé),
   "details": "Description courte des macros"
 }`
         }
