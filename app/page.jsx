@@ -1090,9 +1090,13 @@ export default function CoachZen() {
               {/* Repas libres associés au matin */}
               {dayData.customMeals?.filter(meal => meal.mealType === 'breakfast').map(meal => (
                 <div key={meal.id} style={{ marginTop: 8, padding: 8, background: meal.isHealthy ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
-                  <span style={{ color: theme.text }}>{meal.isHealthy ? '✅' : '⚠️'} {meal.name}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ color: meal.isHealthy ? '#22c55e' : '#ef4444' }}>{meal.isHealthy ? `+${meal.kcal < 500 ? 15 : 10}` : '+0'}</span>
+                    <span style={{ color: theme.text }}>{meal.name}</span>
+                    <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 4, background: meal.isHealthy ? '#22c55e' : '#ef4444', color: 'white', fontWeight: 'bold' }}>{meal.isHealthy ? 'HEALTHY' : 'NOT HEALTHY'}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ color: theme.textMuted, fontSize: 10 }}>{meal.kcal} kcal</span>
+                    <span style={{ color: meal.isHealthy ? '#22c55e' : '#ef4444', fontWeight: 'bold' }}>{meal.isHealthy ? `+${meal.kcal < 500 ? 15 : 10}` : '+0'}</span>
                     <button onClick={() => removeCustomMeal(meal.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12, padding: 0 }}>×</button>
                   </div>
                 </div>
@@ -1137,9 +1141,9 @@ export default function CoachZen() {
                 {/* Repas libres associés */}
                 {dayData.customMeals?.filter(meal => meal.mealType === k).map(meal => (
                   <div key={meal.id} style={{ marginTop: 6, padding: 10, background: meal.isHealthy ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 14 }}>{meal.isHealthy ? '✅' : '⚠️'}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 12, color: theme.text }}>{meal.name}</span>
+                      <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 4, background: meal.isHealthy ? '#22c55e' : '#ef4444', color: 'white', fontWeight: 'bold' }}>{meal.isHealthy ? 'HEALTHY' : 'NOT HEALTHY'}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontSize: 11, color: theme.textMuted }}>{meal.kcal} kcal</span>
