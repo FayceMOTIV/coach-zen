@@ -1040,55 +1040,51 @@ export default function CoachZen() {
               </div>
             </div>
 
+            {/* Petit-déj + Jeûne sur la même ligne */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-              {['breakfast'].map(k => (
-                <div key={k} style={{ flex: 1 }}>
-                  <div style={{ padding: 2, borderRadius: 14, background: `linear-gradient(135deg, ${MEALS[k].colors[0]}, ${MEALS[k].colors[1]})` }}>
-                    <div style={{ background: dayData?.habits?.[k] ? theme.mealCardBgActive : theme.mealCardBg, borderRadius: 12, padding: 10 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <button onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ width: 36, height: 36, borderRadius: 10, background: theme.buttonBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, border: 'none', cursor: 'pointer', color: dayData?.habits?.[k] ? '#22c55e' : theme.text }}>{dayData?.habits?.[k] ? '✓' : MEALS[k].emoji}</button>
-                        <div onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ flex: 1, textAlign: 'left', cursor: 'pointer' }}>
-                          <p style={{ fontSize: 13, fontWeight: 'bold', margin: 0, color: theme.text }}>{MEALS[k].title}</p>
-                          <p style={{ fontSize: 10, color: theme.textMuted, margin: 0 }}>{MEALS[k].kcal} kcal • <span style={{ color: dayData?.habits?.[k] ? '#22c55e' : theme.textMuted }}>+{MEALS[k].points} pts</span></p>
-                        </div>
-                        <button onClick={() => { setSelectedMealType(k); setShowFoodModal(true); }} style={{ width: 26, height: 26, borderRadius: 13, border: 'none', background: 'rgba(34,197,94,0.8)', color: 'white', fontSize: 16, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-                        <button onClick={() => fetchRecipes(k)} style={{ padding: '4px 8px', borderRadius: 6, background: 'transparent', border: `1px solid ${theme.cardBorder}`, cursor: 'pointer' }}><span style={{ fontSize: 12 }}>💡</span></button>
+              {/* Petit-déjeuner */}
+              <div style={{ flex: 1 }}>
+                <div style={{ padding: 2, borderRadius: 14, background: `linear-gradient(135deg, ${MEALS.breakfast.colors[0]}, ${MEALS.breakfast.colors[1]})` }}>
+                  <div style={{ background: dayData?.habits?.breakfast ? theme.mealCardBgActive : theme.mealCardBg, borderRadius: 12, padding: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button onClick={() => updateHabit('breakfast', !dayData?.habits?.breakfast)} style={{ width: 36, height: 36, borderRadius: 10, background: theme.buttonBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, border: 'none', cursor: 'pointer', color: dayData?.habits?.breakfast ? '#22c55e' : theme.text }}>{dayData?.habits?.breakfast ? '✓' : MEALS.breakfast.emoji}</button>
+                      <div onClick={() => updateHabit('breakfast', !dayData?.habits?.breakfast)} style={{ flex: 1, textAlign: 'left', cursor: 'pointer' }}>
+                        <p style={{ fontSize: 13, fontWeight: 'bold', margin: 0, color: theme.text }}>{MEALS.breakfast.title}</p>
+                        <p style={{ fontSize: 10, color: theme.textMuted, margin: 0 }}>{MEALS.breakfast.kcal} kcal • <span style={{ color: dayData?.habits?.breakfast ? '#22c55e' : theme.textMuted }}>+20 pts</span></p>
                       </div>
+                      <button onClick={() => { setSelectedMealType('breakfast'); setShowFoodModal(true); }} style={{ width: 24, height: 24, borderRadius: 12, border: 'none', background: 'rgba(34,197,94,0.8)', color: 'white', fontSize: 14, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
                     </div>
                   </div>
-                  {/* Repas libres associés au petit-déj */}
-                  {dayData.customMeals?.filter(meal => meal.mealType === k).map(meal => (
-                    <div key={meal.id} style={{ marginTop: 4, padding: 8, background: meal.isHealthy ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
-                      <span style={{ color: theme.text }}>{meal.isHealthy ? '✅' : '⚠️'} {meal.name}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ color: meal.isHealthy ? '#22c55e' : '#ef4444' }}>{meal.isHealthy ? `+${meal.points}` : '+0'}</span>
-                        <button onClick={() => removeCustomMeal(meal.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12, padding: 0 }}>×</button>
-                      </div>
-                    </div>
-                  ))}
                 </div>
-              ))}
-            </div>
+                {/* Repas libres associés au petit-déj */}
+                {dayData.customMeals?.filter(meal => meal.mealType === 'breakfast').map(meal => (
+                  <div key={meal.id} style={{ marginTop: 4, padding: 8, background: meal.isHealthy ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
+                    <span style={{ color: theme.text }}>{meal.isHealthy ? '✅' : '⚠️'} {meal.name}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ color: meal.isHealthy ? '#22c55e' : '#ef4444' }}>{meal.isHealthy ? `+${meal.kcal < 500 ? 15 : 10}` : '+0'}</span>
+                      <button onClick={() => removeCustomMeal(meal.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12, padding: 0 }}>×</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-            {/* Fasting Timer - Mini version on Today tab */}
-            <div style={{ ...card, background: 'linear-gradient(135deg, rgba(6,182,212,0.1), rgba(8,145,178,0.1))', border: '1px solid rgba(6,182,212,0.2)', marginBottom: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 24 }}>⏱️</span>
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 'bold', margin: 0, color: theme.text }}>Jeûne intermittent</p>
-                    <p style={{ fontSize: 11, color: dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end ? '#06b6d4' : theme.textMuted, margin: 0, fontFamily: dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end ? 'monospace' : 'inherit', fontWeight: dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end ? 'bold' : 'normal' }}>
-                      {dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end
-                        ? `${Math.floor(fastingElapsed / 3600).toString().padStart(2, '0')}:${Math.floor((fastingElapsed % 3600) / 60).toString().padStart(2, '0')}:${(fastingElapsed % 60).toString().padStart(2, '0')} / ${dayData?.fastingTimer?.goal || 16}h`
-                        : dayData?.fastingTimer?.end
-                          ? `✅ ${Math.floor((dayData.fastingTimer.end - dayData.fastingTimer.start) / 3600000)}h terminé`
-                          : `Objectif: ${dayData?.fastingTimer?.goal || 16}h`}
-                    </p>
+              {/* Jeûne intermittent - Mini */}
+              <div style={{ flex: 1, padding: 2, borderRadius: 14, background: `linear-gradient(135deg, ${MEALS.fasting.colors[0]}, ${MEALS.fasting.colors[1]})` }}>
+                <div style={{ background: theme.mealCardBg, borderRadius: 12, padding: 10, height: '100%', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button onClick={() => setTab('fasting')} style={{ width: 36, height: 36, borderRadius: 10, background: theme.buttonBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, border: 'none', cursor: 'pointer', color: dayData?.fasting?.points ? '#22c55e' : theme.text }}>{dayData?.fasting?.points ? '✓' : '⏱️'}</button>
+                    <div onClick={() => setTab('fasting')} style={{ flex: 1, textAlign: 'left', cursor: 'pointer' }}>
+                      <p style={{ fontSize: 13, fontWeight: 'bold', margin: 0, color: theme.text }}>Jeûne</p>
+                      <p style={{ fontSize: 10, color: dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end ? '#06b6d4' : theme.textMuted, margin: 0, fontFamily: dayData?.fastingTimer?.start ? 'monospace' : 'inherit' }}>
+                        {dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end
+                          ? `${Math.floor(fastingElapsed / 3600)}h ${Math.floor((fastingElapsed % 3600) / 60)}m`
+                          : dayData?.fasting?.points
+                            ? `✅ +${dayData.fasting.points} pts`
+                            : `Objectif: ${dayData?.fastingTimer?.goal || 16}h`}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <button onClick={() => setTab('fasting')} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#06b6d4', color: 'white', cursor: 'pointer', fontSize: 12, fontWeight: 'bold' }}>
-                  Ouvrir
-                </button>
               </div>
             </div>
 
@@ -1114,7 +1110,7 @@ export default function CoachZen() {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontSize: 11, color: theme.textMuted }}>{meal.kcal} kcal</span>
-                      <span style={{ fontSize: 11, color: meal.isHealthy ? '#22c55e' : '#ef4444', fontWeight: 'bold' }}>{meal.isHealthy ? `+${meal.points}` : '+0'} pts</span>
+                      <span style={{ fontSize: 11, color: meal.isHealthy ? '#22c55e' : '#ef4444', fontWeight: 'bold' }}>{meal.isHealthy ? `+${meal.kcal < 500 ? 15 : 10}` : '+0'} pts</span>
                       <button onClick={() => removeCustomMeal(meal.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 14, padding: 2 }}>×</button>
                     </div>
                   </div>
