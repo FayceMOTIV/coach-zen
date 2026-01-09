@@ -1422,9 +1422,63 @@ export default function CoachZen() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div><label style={{ fontSize: 11, color: theme.textMuted }}>Poids</label><input type="number" value={profile.poids} onChange={e => setProfile(p => ({ ...p, poids: Number(e.target.value) || 75 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: theme.inputBg, color: theme.text, marginTop: 4, boxSizing: 'border-box', fontSize: 16 }} /></div>
                 <div><label style={{ fontSize: 11, color: '#22c55e' }}>🎯 Objectif</label><input type="number" value={profile.objectifPoids} onChange={e => setProfile(p => ({ ...p, objectifPoids: Number(e.target.value) || 70 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: 'rgba(34,197,94,0.2)', color: '#22c55e', marginTop: 4, boxSizing: 'border-box', fontSize: 16 }} /></div>
-                <div><label style={{ fontSize: 11, color: theme.textMuted }}>Taille</label><input type="number" value={profile.taille} onChange={e => setProfile(p => ({ ...p, taille: Number(e.target.value) || 175 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: theme.inputBg, color: theme.text, marginTop: 4, boxSizing: 'border-box', fontSize: 16 }} /></div>
+                <div><label style={{ fontSize: 11, color: theme.textMuted }}>Taille (cm)</label><input type="number" value={profile.taille} onChange={e => setProfile(p => ({ ...p, taille: Number(e.target.value) || 175 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: theme.inputBg, color: theme.text, marginTop: 4, boxSizing: 'border-box', fontSize: 16 }} /></div>
                 <div><label style={{ fontSize: 11, color: theme.textMuted }}>Âge</label><input type="number" value={profile.age} onChange={e => setProfile(p => ({ ...p, age: Number(e.target.value) || 30 }))} style={{ width: '100%', padding: 10, borderRadius: 8, border: 'none', background: theme.inputBg, color: theme.text, marginTop: 4, boxSizing: 'border-box', fontSize: 16 }} /></div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ fontSize: 11, color: theme.textMuted }}>Sexe</label>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                    <button onClick={() => setProfile(p => ({ ...p, sexe: 'homme' }))} style={{ flex: 1, padding: 10, borderRadius: 8, border: 'none', cursor: 'pointer', background: profile.sexe === 'homme' ? '#8b5cf6' : theme.inputBg, color: profile.sexe === 'homme' ? 'white' : theme.text }}>♂️ Homme</button>
+                    <button onClick={() => setProfile(p => ({ ...p, sexe: 'femme' }))} style={{ flex: 1, padding: 10, borderRadius: 8, border: 'none', cursor: 'pointer', background: profile.sexe === 'femme' ? '#ec4899' : theme.inputBg, color: profile.sexe === 'femme' ? 'white' : theme.text }}>♀️ Femme</button>
+                  </div>
+                </div>
               </div>
+            </div>
+
+            <div style={card}>
+              <p style={{ fontSize: 12, fontWeight: 'bold', color: theme.textMuted, margin: '0 0 10px' }}>🏃 NIVEAU D'ACTIVITÉ</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[
+                  { key: 'sedentaire', label: 'Sédentaire', desc: "Peu ou pas d'exercice" },
+                  { key: 'leger', label: 'Légèrement actif', desc: 'Exercice léger 1-3j/sem' },
+                  { key: 'modere', label: 'Modérément actif', desc: 'Exercice modéré 3-5j/sem' },
+                  { key: 'actif', label: 'Actif', desc: 'Exercice intense 6-7j/sem' },
+                  { key: 'intense', label: 'Très actif', desc: 'Exercice très intense + travail physique' }
+                ].map(a => (
+                  <button key={a.key} onClick={() => setProfile(p => ({ ...p, activite: a.key }))} style={{ padding: 12, borderRadius: 10, border: 'none', cursor: 'pointer', background: profile.activite === a.key ? 'rgba(139,92,246,0.3)' : theme.inputBg, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span style={{ fontSize: 14, fontWeight: 'bold', color: profile.activite === a.key ? '#8b5cf6' : theme.text }}>{a.label}</span>
+                    <span style={{ fontSize: 11, color: theme.textMuted }}>{a.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={card}>
+              <p style={{ fontSize: 12, fontWeight: 'bold', color: theme.textMuted, margin: '0 0 12px' }}>🔥 MÉTABOLISME</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                <div style={{ background: theme.inputBg, borderRadius: 10, padding: 12, textAlign: 'center' }}>
+                  <p style={{ fontSize: 11, color: theme.textMuted, margin: '0 0 4px' }}>BMR</p>
+                  <p style={{ fontSize: 22, fontWeight: 'bold', color: '#f59e0b', margin: 0 }}>{bmr}</p>
+                  <p style={{ fontSize: 10, color: theme.textMuted, margin: 0 }}>kcal/jour</p>
+                </div>
+                <div style={{ background: theme.inputBg, borderRadius: 10, padding: 12, textAlign: 'center' }}>
+                  <p style={{ fontSize: 11, color: theme.textMuted, margin: '0 0 4px' }}>TDEE</p>
+                  <p style={{ fontSize: 22, fontWeight: 'bold', color: '#06b6d4', margin: 0 }}>{tdee}</p>
+                  <p style={{ fontSize: 10, color: theme.textMuted, margin: 0 }}>kcal/jour</p>
+                </div>
+              </div>
+              <div style={{ background: 'rgba(34,197,94,0.1)', borderRadius: 10, padding: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontSize: 11, color: theme.textMuted, margin: '0 0 2px' }}>📉 Pour perdre ~0.5kg/sem</p>
+                    <p style={{ fontSize: 18, fontWeight: 'bold', color: '#22c55e', margin: 0 }}>{tdee - 500} kcal/jour</p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ fontSize: 11, color: theme.textMuted, margin: '0 0 2px' }}>Déficit</p>
+                    <p style={{ fontSize: 14, fontWeight: 'bold', color: '#ef4444', margin: 0 }}>-500 kcal</p>
+                  </div>
+                </div>
+              </div>
+              <p style={{ fontSize: 10, color: theme.textMuted, marginTop: 10, textAlign: 'center' }}>BMR = métabolisme de base • TDEE = avec activité</p>
             </div>
           </>
         )}
