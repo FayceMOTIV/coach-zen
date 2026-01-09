@@ -600,7 +600,14 @@ export default function CoachZen() {
 
   const addCustomMeal = useCallback(() => {
     if (!foodResult || !foodResult.success) return;
-    setDayData(p => ({ ...p, customMeals: [...(p.customMeals || []), { id: Date.now(), name: foodResult.name, kcal: foodResult.kcal, points: foodResult.isHealthy ? (foodResult.kcal < 500 ? 15 : 10) : 0, isHealthy: foodResult.isHealthy, details: foodResult.details, mealType: selectedMealType }] }));
+    setDayData(p => ({
+      ...p,
+      customMeals: [...(p.customMeals || []), { id: Date.now(), name: foodResult.name, kcal: foodResult.kcal, points: foodResult.isHealthy ? (foodResult.kcal < 500 ? 15 : 10) : 0, isHealthy: foodResult.isHealthy, details: foodResult.details, mealType: selectedMealType }],
+      // Désactive le toggle du repas quand on ajoute un repas custom (pas de double points)
+      habits: { ...(p.habits || {}), [selectedMealType]: false },
+      // Si repas custom pour le matin, désactive aussi le jeûne du matin
+      ...(selectedMealType === 'breakfast' ? { fastingMorning: false } : {})
+    }));
     setShowFoodModal(false); setFoodDescription(''); setFoodResult(null); setFoodImage(null); setSelectedMealType(null);
   }, [foodResult, selectedMealType]);
 
