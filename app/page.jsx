@@ -1054,26 +1054,26 @@ export default function CoachZen() {
                 <button
                   onClick={() => setDayData(p => ({ ...p, habits: { ...p.habits, breakfast: true }, fastingMorning: false }))}
                   style={{
-                    flex: 1, padding: 12, borderRadius: 12, border: 'none', cursor: 'pointer',
+                    flex: 1, padding: 12, borderRadius: 12, border: 'none', cursor: 'pointer', minHeight: 80,
                     background: dayData?.habits?.breakfast && !dayData?.fastingMorning ? 'linear-gradient(135deg, #f97316, #f59e0b)' : theme.buttonBg,
                     color: dayData?.habits?.breakfast && !dayData?.fastingMorning ? 'white' : theme.text
                   }}>
                   <span style={{ fontSize: 20, display: 'block' }}>🍳</span>
                   <span style={{ fontSize: 12, fontWeight: 'bold' }}>Petit-déj</span>
-                  {dayData?.habits?.breakfast && !dayData?.fastingMorning && <span style={{ display: 'block', fontSize: 10, marginTop: 2 }}>✓ +20 pts</span>}
+                  <span style={{ display: 'block', fontSize: 10, marginTop: 2, opacity: dayData?.habits?.breakfast && !dayData?.fastingMorning ? 1 : 0 }}>✓ +20 pts</span>
                 </button>
 
                 {/* Option: Je jeûne ce matin */}
                 <button
                   onClick={() => setDayData(p => ({ ...p, habits: { ...p.habits, breakfast: false }, fastingMorning: true }))}
                   style={{
-                    flex: 1, padding: 12, borderRadius: 12, border: 'none', cursor: 'pointer',
+                    flex: 1, padding: 12, borderRadius: 12, border: 'none', cursor: 'pointer', minHeight: 80,
                     background: dayData?.fastingMorning ? 'linear-gradient(135deg, #06b6d4, #0891b2)' : theme.buttonBg,
                     color: dayData?.fastingMorning ? 'white' : theme.text
                   }}>
                   <span style={{ fontSize: 20, display: 'block' }}>🚫🍽️</span>
                   <span style={{ fontSize: 12, fontWeight: 'bold' }}>Je jeûne</span>
-                  {dayData?.fastingMorning && <span style={{ display: 'block', fontSize: 10, marginTop: 2 }}>✓ +20 pts</span>}
+                  <span style={{ display: 'block', fontSize: 10, marginTop: 2, opacity: dayData?.fastingMorning ? 1 : 0 }}>✓ +20 pts</span>
                 </button>
 
                 {/* Bouton + pour repas libre */}
