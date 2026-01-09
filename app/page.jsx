@@ -61,6 +61,8 @@ const calcScore = (d) => {
     if (d.habits.dinner) s += 20;
     if (d.habits.plannedTreat) s += 20;
   }
+  // Jeûne du matin = +20 pts (remplace petit-déj)
+  if (d.fastingMorning) s += 20;
   // Points de jeûne progressifs (1pt/heure + 10 bonus si objectif atteint)
   if (d.fasting?.points) s += d.fasting.points;
   s += getCustomMealsPoints(d.customMeals);
@@ -382,7 +384,9 @@ export default function CoachZen() {
           water: dayData.water,
           ecarts: dayData.ecarts,
           movement: dayData.movement,
-          customMeals: dayData.customMeals
+          customMeals: dayData.customMeals,
+          fasting: dayData.fasting,
+          fastingMorning: dayData.fastingMorning
         })
       });
       const data = await res.json();
@@ -964,6 +968,7 @@ export default function CoachZen() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {(() => {
                   const mealsPoints = ['breakfast', 'lunch', 'snack', 'dinner', 'plannedTreat'].filter(k => dayData?.habits?.[k]).length * 20;
+                  const fastingMorningPts = dayData.fastingMorning ? 20 : 0;
                   const customPoints = getCustomMealsPoints(dayData.customMeals);
                   const fastingPts = dayData.fasting?.points || 0;
                   const sleepPts = dayData.sleep >= 6.5 ? 10 : 0;
@@ -975,6 +980,7 @@ export default function CoachZen() {
                   return (
                     <>
                       {mealsPoints > 0 && <span style={{ fontSize: 11, color: theme.text, background: theme.inputBg, padding: '4px 8px', borderRadius: 6 }}>🍽️ Repas: +{mealsPoints}</span>}
+                      {fastingMorningPts > 0 && <span style={{ fontSize: 11, color: theme.text, background: theme.inputBg, padding: '4px 8px', borderRadius: 6 }}>🚫🍽️ Jeûne matin: +{fastingMorningPts}</span>}
                       {customPoints > 0 && <span style={{ fontSize: 11, color: theme.text, background: theme.inputBg, padding: '4px 8px', borderRadius: 6 }}>🥗 Libres: +{customPoints}</span>}
                       {fastingPts > 0 && <span style={{ fontSize: 11, color: theme.text, background: theme.inputBg, padding: '4px 8px', borderRadius: 6 }}>⏱️ Jeûne: +{fastingPts}</span>}
                       {sleepPts > 0 && <span style={{ fontSize: 11, color: theme.text, background: theme.inputBg, padding: '4px 8px', borderRadius: 6 }}>🌙 Sommeil: +{sleepPts}</span>}
@@ -1040,50 +1046,70 @@ export default function CoachZen() {
               </div>
             </div>
 
-            {/* Petit-déj + Jeûne sur la même ligne */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-              {/* Petit-déjeuner */}
-              <div style={{ flex: 1 }}>
-                <div style={{ padding: 2, borderRadius: 14, background: `linear-gradient(135deg, ${MEALS.breakfast.colors[0]}, ${MEALS.breakfast.colors[1]})` }}>
-                  <div style={{ background: dayData?.habits?.breakfast ? theme.mealCardBgActive : theme.mealCardBg, borderRadius: 12, padding: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <button onClick={() => updateHabit('breakfast', !dayData?.habits?.breakfast)} style={{ width: 36, height: 36, borderRadius: 10, background: theme.buttonBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, border: 'none', cursor: 'pointer', color: dayData?.habits?.breakfast ? '#22c55e' : theme.text }}>{dayData?.habits?.breakfast ? '✓' : MEALS.breakfast.emoji}</button>
-                      <div onClick={() => updateHabit('breakfast', !dayData?.habits?.breakfast)} style={{ flex: 1, textAlign: 'left', cursor: 'pointer' }}>
-                        <p style={{ fontSize: 13, fontWeight: 'bold', margin: 0, color: theme.text }}>{MEALS.breakfast.title}</p>
-                        <p style={{ fontSize: 10, color: theme.textMuted, margin: 0 }}>{MEALS.breakfast.kcal} kcal • <span style={{ color: dayData?.habits?.breakfast ? '#22c55e' : theme.textMuted }}>+20 pts</span></p>
-                      </div>
-                      <button onClick={() => { setSelectedMealType('breakfast'); setShowFoodModal(true); }} style={{ width: 24, height: 24, borderRadius: 12, border: 'none', background: 'rgba(34,197,94,0.8)', color: 'white', fontSize: 14, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-                    </div>
+            {/* Petit-déjeuner OU Jeûne du matin */}
+            <div style={{ ...card, marginBottom: 10 }}>
+              <p style={{ fontSize: 12, color: theme.textMuted, margin: '0 0 10px', textAlign: 'center' }}>🌅 Matin : choisis une option (+20 pts)</p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {/* Option: Petit-déjeuner */}
+                <button
+                  onClick={() => setDayData(p => ({ ...p, habits: { ...p.habits, breakfast: true }, fastingMorning: false }))}
+                  style={{
+                    flex: 1, padding: 12, borderRadius: 12, border: 'none', cursor: 'pointer',
+                    background: dayData?.habits?.breakfast && !dayData?.fastingMorning ? 'linear-gradient(135deg, #f97316, #f59e0b)' : theme.buttonBg,
+                    color: dayData?.habits?.breakfast && !dayData?.fastingMorning ? 'white' : theme.text
+                  }}>
+                  <span style={{ fontSize: 20, display: 'block' }}>🍳</span>
+                  <span style={{ fontSize: 12, fontWeight: 'bold' }}>Petit-déj</span>
+                  {dayData?.habits?.breakfast && !dayData?.fastingMorning && <span style={{ display: 'block', fontSize: 10, marginTop: 2 }}>✓ +20 pts</span>}
+                </button>
+
+                {/* Option: Je jeûne ce matin */}
+                <button
+                  onClick={() => setDayData(p => ({ ...p, habits: { ...p.habits, breakfast: false }, fastingMorning: true }))}
+                  style={{
+                    flex: 1, padding: 12, borderRadius: 12, border: 'none', cursor: 'pointer',
+                    background: dayData?.fastingMorning ? 'linear-gradient(135deg, #06b6d4, #0891b2)' : theme.buttonBg,
+                    color: dayData?.fastingMorning ? 'white' : theme.text
+                  }}>
+                  <span style={{ fontSize: 20, display: 'block' }}>🚫🍽️</span>
+                  <span style={{ fontSize: 12, fontWeight: 'bold' }}>Je jeûne</span>
+                  {dayData?.fastingMorning && <span style={{ display: 'block', fontSize: 10, marginTop: 2 }}>✓ +20 pts</span>}
+                </button>
+
+                {/* Bouton + pour repas libre */}
+                <button onClick={() => { setSelectedMealType('breakfast'); setShowFoodModal(true); }}
+                  style={{ width: 48, borderRadius: 12, border: 'none', background: 'rgba(34,197,94,0.2)', color: '#22c55e', fontSize: 24, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+              </div>
+              {/* Repas libres associés au matin */}
+              {dayData.customMeals?.filter(meal => meal.mealType === 'breakfast').map(meal => (
+                <div key={meal.id} style={{ marginTop: 8, padding: 8, background: meal.isHealthy ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
+                  <span style={{ color: theme.text }}>{meal.isHealthy ? '✅' : '⚠️'} {meal.name}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ color: meal.isHealthy ? '#22c55e' : '#ef4444' }}>{meal.isHealthy ? `+${meal.kcal < 500 ? 15 : 10}` : '+0'}</span>
+                    <button onClick={() => removeCustomMeal(meal.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12, padding: 0 }}>×</button>
                   </div>
                 </div>
-                {/* Repas libres associés au petit-déj */}
-                {dayData.customMeals?.filter(meal => meal.mealType === 'breakfast').map(meal => (
-                  <div key={meal.id} style={{ marginTop: 4, padding: 8, background: meal.isHealthy ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
-                    <span style={{ color: theme.text }}>{meal.isHealthy ? '✅' : '⚠️'} {meal.name}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ color: meal.isHealthy ? '#22c55e' : '#ef4444' }}>{meal.isHealthy ? `+${meal.kcal < 500 ? 15 : 10}` : '+0'}</span>
-                      <button onClick={() => removeCustomMeal(meal.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12, padding: 0 }}>×</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              ))}
+            </div>
 
-              {/* Jeûne intermittent - Mini */}
-              <div style={{ flex: 1, padding: 2, borderRadius: 14, background: `linear-gradient(135deg, ${MEALS.fasting.colors[0]}, ${MEALS.fasting.colors[1]})` }}>
-                <div style={{ background: theme.mealCardBg, borderRadius: 12, padding: 10, height: '100%', boxSizing: 'border-box' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button onClick={() => setTab('fasting')} style={{ width: 36, height: 36, borderRadius: 10, background: theme.buttonBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, border: 'none', cursor: 'pointer', color: dayData?.fasting?.points ? '#22c55e' : theme.text }}>{dayData?.fasting?.points ? '✓' : '⏱️'}</button>
-                    <div onClick={() => setTab('fasting')} style={{ flex: 1, textAlign: 'left', cursor: 'pointer' }}>
-                      <p style={{ fontSize: 13, fontWeight: 'bold', margin: 0, color: theme.text }}>Jeûne</p>
-                      <p style={{ fontSize: 10, color: dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end ? '#06b6d4' : theme.textMuted, margin: 0, fontFamily: dayData?.fastingTimer?.start ? 'monospace' : 'inherit' }}>
-                        {dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end
-                          ? `${Math.floor(fastingElapsed / 3600)}h ${Math.floor((fastingElapsed % 3600) / 60)}m`
-                          : dayData?.fasting?.points
-                            ? `✅ +${dayData.fasting.points} pts`
-                            : `Objectif: ${dayData?.fastingTimer?.goal || 16}h`}
-                      </p>
-                    </div>
+            {/* Jeûne intermittent - Timer card */}
+            <div style={{ padding: 2, borderRadius: 14, background: `linear-gradient(135deg, ${MEALS.fasting.colors[0]}, ${MEALS.fasting.colors[1]})`, marginBottom: 10 }}>
+              <div style={{ background: theme.mealCardBg, borderRadius: 12, padding: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button onClick={() => setTab('fasting')} style={{ width: 44, height: 44, borderRadius: 12, background: theme.buttonBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, border: 'none', cursor: 'pointer', color: dayData?.fasting?.points ? '#22c55e' : theme.text }}>{dayData?.fasting?.points ? '✓' : '⏱️'}</button>
+                  <div onClick={() => setTab('fasting')} style={{ flex: 1, textAlign: 'left', cursor: 'pointer' }}>
+                    <p style={{ fontSize: 14, fontWeight: 'bold', margin: 0, color: theme.text }}>Jeûne Intermittent</p>
+                    <p style={{ fontSize: 11, color: dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end ? '#06b6d4' : theme.textMuted, margin: 0, fontFamily: dayData?.fastingTimer?.start ? 'monospace' : 'inherit' }}>
+                      {dayData?.fastingTimer?.start && !dayData?.fastingTimer?.end
+                        ? `En cours: ${Math.floor(fastingElapsed / 3600)}h ${Math.floor((fastingElapsed % 3600) / 60)}m`
+                        : dayData?.fasting?.points
+                          ? `✅ Terminé: +${dayData.fasting.points} pts`
+                          : `Objectif: ${dayData?.fastingTimer?.goal || 16}h • Tap pour démarrer`}
+                    </p>
                   </div>
+                  {dayData?.fasting?.points && (
+                    <span style={{ fontSize: 14, fontWeight: 'bold', color: '#22c55e' }}>+{dayData.fasting.points}</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1279,8 +1305,18 @@ export default function CoachZen() {
             {dayData?.fastingTimer?.start && (
               <div style={{ ...card, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div style={{ background: theme.buttonBg, borderRadius: 12, padding: 12, textAlign: 'center' }}>
-                  <p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>Début</p>
-                  <p style={{ fontSize: 16, fontWeight: 'bold', margin: '4px 0 0', color: theme.text }}>{new Date(dayData.fastingTimer.start).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+                  <p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>Début (modifiable)</p>
+                  <input
+                    type="time"
+                    value={new Date(dayData.fastingTimer.start).toTimeString().slice(0, 5)}
+                    onChange={(e) => {
+                      const [hours, minutes] = e.target.value.split(':').map(Number);
+                      const newStart = new Date(dayData.fastingTimer.start);
+                      newStart.setHours(hours, minutes, 0, 0);
+                      setDayData(p => ({ ...p, fastingTimer: { ...p.fastingTimer, start: newStart.getTime() } }));
+                    }}
+                    style={{ fontSize: 16, fontWeight: 'bold', margin: '4px 0 0', color: theme.text, background: 'transparent', border: `1px solid ${theme.cardBorder}`, borderRadius: 8, padding: '4px 8px', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}
+                  />
                 </div>
                 <div style={{ background: theme.buttonBg, borderRadius: 12, padding: 12, textAlign: 'center' }}>
                   <p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>Fin prévue</p>

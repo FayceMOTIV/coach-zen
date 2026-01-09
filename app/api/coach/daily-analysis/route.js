@@ -4,12 +4,11 @@ const client = new OpenAI();
 
 export async function POST(request) {
   try {
-    const { score, habits, sleep, nap, energy, water, ecarts, movement, customMeals } = await request.json();
+    const { score, habits, sleep, nap, energy, water, ecarts, movement, customMeals, fasting, fastingMorning } = await request.json();
 
     // Build detailed habits list
     const habitNames = {
       breakfast: 'Petit-déj',
-      fasting: 'Jeûne',
       lunch: 'Déjeuner',
       snack: 'Collation',
       dinner: 'Dîner',
@@ -21,8 +20,15 @@ export async function POST(request) {
       done
     }));
 
-    const doneHabits = habitsList.filter(h => h.done).map(h => h.name);
-    const missedHabits = habitsList.filter(h => !h.done).map(h => h.name);
+    let doneHabits = habitsList.filter(h => h.done).map(h => h.name);
+    let missedHabits = habitsList.filter(h => !h.done).map(h => h.name);
+
+    // Si jeûne du matin, remplacer petit-déj par "Jeûne matin"
+    if (fastingMorning) {
+      doneHabits = doneHabits.filter(h => h !== 'Petit-déj');
+      doneHabits.unshift('Jeûne matin');
+      missedHabits = missedHabits.filter(h => h !== 'Petit-déj');
+    }
 
     // Build movement list (matching UI keys: workout, run, walk)
     const movementNames = {
@@ -40,6 +46,11 @@ export async function POST(request) {
       ? `${customMealsList.length} repas ajouté(s): ${customMealsList.map(m => m.name).join(', ')}`
       : '';
 
+    // Fasting info
+    const fastingInfo = fasting?.hours
+      ? `${fasting.hours}h de jeûne${fasting.completed ? ' (objectif atteint!)' : ''} = ${fasting.points || 0} pts`
+      : '';
+
     // Calculate ecarts
     const petit = ecarts?.petit || 0;
     const moyen = ecarts?.moyen || 0;
@@ -52,7 +63,7 @@ DONNÉES :
 - Score : ${score} pts${score >= 100 ? ' (journée parfaite!)' : ''}
 - Repas OK : ${doneHabits.join(', ') || 'aucun'}
 - Repas manqués : ${missedHabits.join(', ') || 'aucun'}
-${customMealsInfo ? `- Repas custom : ${customMealsInfo}` : ''}- Sommeil : ${sleep}h
+${customMealsInfo ? `- Repas custom : ${customMealsInfo}\n` : ''}${fastingInfo ? `- Jeûne : ${fastingInfo}\n` : ''}- Sommeil : ${sleep}h
 - Sieste : ${nap} min
 - Énergie : ${energy}/5
 - Eau : ${water}/8 verres

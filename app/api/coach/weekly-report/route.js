@@ -12,15 +12,22 @@ export async function POST(request) {
       let s = 0;
       if (d.habits) {
         if (d.habits.breakfast) s += 20;
-        if (d.habits.fasting) s += 20;
         if (d.habits.lunch) s += 20;
         if (d.habits.snack) s += 20;
         if (d.habits.dinner) s += 20;
         if (d.habits.plannedTreat) s += 20;
       }
-      // Custom meals (capped at 4 = 80 pts max)
+      // Jeûne du matin = +20 pts (remplace petit-déj)
+      if (d.fastingMorning) s += 20;
+      // Points de jeûne progressifs (1pt/heure + 10 bonus si objectif atteint)
+      if (d.fasting?.points) s += d.fasting.points;
+      // Custom meals (capped at 4) - healthy <500kcal = +15, healthy >=500kcal = +10
       const customMeals = (d.customMeals || []).slice(0, 4);
-      customMeals.forEach(m => { s += m.points || 0; });
+      customMeals.forEach(m => {
+        if (m.isHealthy) {
+          s += m.kcal < 500 ? 15 : 10;
+        }
+      });
       if (d.sleep >= 6.5) s += 10;
       if ((d.water || 0) >= 8) s += 10;
       if (d.movement) {
