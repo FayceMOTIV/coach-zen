@@ -1054,54 +1054,59 @@ export default function CoachZen() {
             </div>
 
             {/* Petit-déjeuner OU Jeûne du matin */}
-            <div style={{ ...card, marginBottom: 10 }}>
-              <p style={{ fontSize: 12, color: theme.textMuted, margin: '0 0 10px', textAlign: 'center' }}>🌅 Matin : choisis une option (+20 pts)</p>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {/* Option: Petit-déjeuner */}
-                <button
-                  onClick={() => setDayData(p => ({ ...p, habits: { ...p.habits, breakfast: true }, fastingMorning: false }))}
-                  style={{
-                    flex: 1, padding: 12, borderRadius: 12, border: 'none', cursor: 'pointer', minHeight: 80,
-                    background: dayData?.habits?.breakfast && !dayData?.fastingMorning ? 'linear-gradient(135deg, #f97316, #f59e0b)' : theme.buttonBg,
-                    color: dayData?.habits?.breakfast && !dayData?.fastingMorning ? 'white' : theme.text
-                  }}>
-                  <span style={{ fontSize: 20, display: 'block' }}>🍳</span>
-                  <span style={{ fontSize: 12, fontWeight: 'bold' }}>Petit-déj</span>
-                  <span style={{ display: 'block', fontSize: 10, marginTop: 2, opacity: dayData?.habits?.breakfast && !dayData?.fastingMorning ? 1 : 0 }}>✓ +20 pts</span>
-                </button>
-
-                {/* Option: Je jeûne ce matin */}
-                <button
-                  onClick={() => setDayData(p => ({ ...p, habits: { ...p.habits, breakfast: false }, fastingMorning: true }))}
-                  style={{
-                    flex: 1, padding: 12, borderRadius: 12, border: 'none', cursor: 'pointer', minHeight: 80,
-                    background: dayData?.fastingMorning ? 'linear-gradient(135deg, #06b6d4, #0891b2)' : theme.buttonBg,
-                    color: dayData?.fastingMorning ? 'white' : theme.text
-                  }}>
-                  <span style={{ fontSize: 20, display: 'block' }}>🚫🍽️</span>
-                  <span style={{ fontSize: 12, fontWeight: 'bold' }}>Je jeûne</span>
-                  <span style={{ display: 'block', fontSize: 10, marginTop: 2, opacity: dayData?.fastingMorning ? 1 : 0 }}>✓ +20 pts</span>
-                </button>
-
-                {/* Bouton + pour repas libre */}
-                <button onClick={() => { setSelectedMealType('breakfast'); setShowFoodModal(true); }}
-                  style={{ width: 48, borderRadius: 12, border: 'none', background: 'rgba(34,197,94,0.2)', color: '#22c55e', fontSize: 24, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+            {(() => {
+              const breakfastCustomMeal = dayData.customMeals?.find(meal => meal.mealType === 'breakfast');
+              const hasBreakfastCustom = !!breakfastCustomMeal;
+              return (
+              <div style={{ ...card, marginBottom: 10 }}>
+                {hasBreakfastCustom ? (
+                  /* Affiche le repas custom comme petit-déj */
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 12, background: 'linear-gradient(135deg, #f97316, #f59e0b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: 'white' }}>✓</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <p style={{ fontSize: 16, fontWeight: 'bold', margin: 0, color: theme.text }}>{breakfastCustomMeal.name}</p>
+                        <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 4, background: breakfastCustomMeal.isHealthy ? '#22c55e' : '#ef4444', color: 'white', fontWeight: 'bold' }}>{breakfastCustomMeal.isHealthy ? 'HEALTHY' : 'NOT HEALTHY'}</span>
+                      </div>
+                      <p style={{ fontSize: 12, color: theme.textMuted, margin: 0 }}>Petit-déjeuner • {breakfastCustomMeal.kcal} kcal</p>
+                    </div>
+                    <span style={{ fontSize: 13, color: breakfastCustomMeal.isHealthy ? '#22c55e' : '#ef4444', fontWeight: 'bold' }}>{breakfastCustomMeal.isHealthy ? `+${breakfastCustomMeal.kcal < 500 ? 15 : 10}` : '+0'}</span>
+                    <button onClick={() => removeCustomMeal(breakfastCustomMeal.id)} style={{ padding: '6px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.2)', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 12 }}>✕</button>
+                  </div>
+                ) : (
+                  /* Toggle Petit-déj / Je jeûne */
+                  <>
+                    <p style={{ fontSize: 12, color: theme.textMuted, margin: '0 0 10px', textAlign: 'center' }}>🌅 Matin : choisis une option (+20 pts)</p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => setDayData(p => ({ ...p, habits: { ...p.habits, breakfast: true }, fastingMorning: false }))}
+                        style={{
+                          flex: 1, padding: 12, borderRadius: 12, border: 'none', cursor: 'pointer', minHeight: 80,
+                          background: dayData?.habits?.breakfast && !dayData?.fastingMorning ? 'linear-gradient(135deg, #f97316, #f59e0b)' : theme.buttonBg,
+                          color: dayData?.habits?.breakfast && !dayData?.fastingMorning ? 'white' : theme.text
+                        }}>
+                        <span style={{ fontSize: 20, display: 'block' }}>🍳</span>
+                        <span style={{ fontSize: 12, fontWeight: 'bold' }}>Petit-déj</span>
+                        <span style={{ display: 'block', fontSize: 10, marginTop: 2, opacity: dayData?.habits?.breakfast && !dayData?.fastingMorning ? 1 : 0 }}>✓ +20 pts</span>
+                      </button>
+                      <button
+                        onClick={() => setDayData(p => ({ ...p, habits: { ...p.habits, breakfast: false }, fastingMorning: true }))}
+                        style={{
+                          flex: 1, padding: 12, borderRadius: 12, border: 'none', cursor: 'pointer', minHeight: 80,
+                          background: dayData?.fastingMorning ? 'linear-gradient(135deg, #06b6d4, #0891b2)' : theme.buttonBg,
+                          color: dayData?.fastingMorning ? 'white' : theme.text
+                        }}>
+                        <span style={{ fontSize: 20, display: 'block' }}>🚫🍽️</span>
+                        <span style={{ fontSize: 12, fontWeight: 'bold' }}>Je jeûne</span>
+                        <span style={{ display: 'block', fontSize: 10, marginTop: 2, opacity: dayData?.fastingMorning ? 1 : 0 }}>✓ +20 pts</span>
+                      </button>
+                      <button onClick={() => { setSelectedMealType('breakfast'); setShowFoodModal(true); }}
+                        style={{ width: 48, borderRadius: 12, border: 'none', background: 'rgba(34,197,94,0.2)', color: '#22c55e', fontSize: 24, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                    </div>
+                  </>
+                )}
               </div>
-              {/* Repas libres associés au matin */}
-              {dayData.customMeals?.filter(meal => meal.mealType === 'breakfast').map(meal => (
-                <div key={meal.id} style={{ marginTop: 8, padding: 8, background: meal.isHealthy ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ color: theme.text }}>{meal.name}</span>
-                    <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 4, background: meal.isHealthy ? '#22c55e' : '#ef4444', color: 'white', fontWeight: 'bold' }}>{meal.isHealthy ? 'HEALTHY' : 'NOT HEALTHY'}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ color: theme.textMuted, fontSize: 10 }}>{meal.kcal} kcal</span>
-                    <span style={{ color: meal.isHealthy ? '#22c55e' : '#ef4444', fontWeight: 'bold' }}>{meal.isHealthy ? `+${meal.kcal < 500 ? 15 : 10}` : '+0'}</span>
-                    <button onClick={() => removeCustomMeal(meal.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12, padding: 0 }}>×</button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            );})()}
 
             {/* Jeûne intermittent - Timer card */}
             <div style={{ padding: 2, borderRadius: 14, background: `linear-gradient(135deg, ${MEALS.fasting.colors[0]}, ${MEALS.fasting.colors[1]})`, marginBottom: 10 }}>
@@ -1125,53 +1130,76 @@ export default function CoachZen() {
               </div>
             </div>
 
-            {Object.entries(MEALS).filter(([k]) => !['breakfast', 'fasting'].includes(k)).map(([k, m]) => (
+            {Object.entries(MEALS).filter(([k]) => !['breakfast', 'fasting'].includes(k)).map(([k, m]) => {
+              const customMeal = dayData.customMeals?.find(meal => meal.mealType === k);
+              const hasCustomMeal = !!customMeal;
+              return (
               <div key={k} style={{ width: '100%', marginBottom: 10 }}>
                 <div style={{ padding: 3, borderRadius: 18, background: `linear-gradient(135deg, ${m.colors[0]}, ${m.colors[1]})` }}>
-                  <div style={{ background: dayData?.habits?.[k] ? theme.mealCardBgActive : theme.mealCardBg, borderRadius: 15, padding: 14 }}>
+                  <div style={{ background: hasCustomMeal || dayData?.habits?.[k] ? theme.mealCardBgActive : theme.mealCardBg, borderRadius: 15, padding: 14 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <button onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ width: 48, height: 48, borderRadius: 12, background: theme.buttonBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, border: 'none', cursor: 'pointer', color: dayData?.habits?.[k] ? '#22c55e' : theme.text }}>{dayData?.habits?.[k] ? '✓' : m.emoji}</button>
-                      <div onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ flex: 1, textAlign: 'left', cursor: 'pointer' }}><p style={{ fontSize: 16, fontWeight: 'bold', margin: 0, color: theme.text }}>{m.title}</p><p style={{ fontSize: 12, color: theme.textMuted, margin: 0 }}>{m.time} • {m.kcal} kcal</p></div>
-                      <button onClick={() => { setSelectedMealType(k); setShowFoodModal(true); }} style={{ width: 32, height: 32, borderRadius: 16, border: 'none', background: 'rgba(34,197,94,0.8)', color: 'white', fontSize: 18, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-                      <button onClick={() => fetchRecipes(k)} style={{ padding: '6px 10px', borderRadius: 8, background: 'transparent', border: `1px solid ${theme.cardBorder}`, cursor: 'pointer' }}><span style={{ fontSize: 12 }}>💡</span></button>
-                      <div onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ padding: '6px 12px', borderRadius: 10, background: theme.buttonBg, cursor: 'pointer' }}><span style={{ fontSize: 14, fontWeight: 'bold', color: dayData?.habits?.[k] ? '#22c55e' : theme.text }}>{dayData?.habits?.[k] ? '✓' : '+20'}</span></div>
+                      {/* Icône : check si custom meal ou toggle */}
+                      <div style={{ width: 48, height: 48, borderRadius: 12, background: theme.buttonBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: hasCustomMeal || dayData?.habits?.[k] ? '#22c55e' : theme.text }}>
+                        {hasCustomMeal || dayData?.habits?.[k] ? '✓' : m.emoji}
+                      </div>
+                      {/* Contenu : affiche le repas custom ou le repas par défaut */}
+                      <div style={{ flex: 1, textAlign: 'left' }}>
+                        {hasCustomMeal ? (
+                          <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <p style={{ fontSize: 16, fontWeight: 'bold', margin: 0, color: theme.text }}>{customMeal.name}</p>
+                              <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 4, background: customMeal.isHealthy ? '#22c55e' : '#ef4444', color: 'white', fontWeight: 'bold' }}>{customMeal.isHealthy ? 'HEALTHY' : 'NOT HEALTHY'}</span>
+                            </div>
+                            <p style={{ fontSize: 12, color: theme.textMuted, margin: 0 }}>{m.time} • {customMeal.kcal} kcal</p>
+                          </>
+                        ) : (
+                          <div onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ cursor: 'pointer' }}>
+                            <p style={{ fontSize: 16, fontWeight: 'bold', margin: 0, color: theme.text }}>{m.title}</p>
+                            <p style={{ fontSize: 12, color: theme.textMuted, margin: 0 }}>{m.time} • {m.kcal} kcal</p>
+                          </div>
+                        )}
+                      </div>
+                      {/* Actions */}
+                      {hasCustomMeal ? (
+                        <>
+                          <span style={{ fontSize: 13, color: customMeal.isHealthy ? '#22c55e' : '#ef4444', fontWeight: 'bold' }}>{customMeal.isHealthy ? `+${customMeal.kcal < 500 ? 15 : 10}` : '+0'}</span>
+                          <button onClick={() => removeCustomMeal(customMeal.id)} style={{ padding: '6px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.2)', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 12 }}>✕</button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => { setSelectedMealType(k); setShowFoodModal(true); }} style={{ width: 32, height: 32, borderRadius: 16, border: 'none', background: 'rgba(34,197,94,0.8)', color: 'white', fontSize: 18, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                          <button onClick={() => fetchRecipes(k)} style={{ padding: '6px 10px', borderRadius: 8, background: 'transparent', border: `1px solid ${theme.cardBorder}`, cursor: 'pointer' }}><span style={{ fontSize: 12 }}>💡</span></button>
+                          <div onClick={() => updateHabit(k, !dayData?.habits?.[k])} style={{ padding: '6px 12px', borderRadius: 10, background: theme.buttonBg, cursor: 'pointer' }}><span style={{ fontSize: 14, fontWeight: 'bold', color: dayData?.habits?.[k] ? '#22c55e' : theme.text }}>{dayData?.habits?.[k] ? '✓' : '+20'}</span></div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
-                {/* Repas libres associés */}
-                {dayData.customMeals?.filter(meal => meal.mealType === k).map(meal => (
-                  <div key={meal.id} style={{ marginTop: 6, padding: 10, background: meal.isHealthy ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 12, color: theme.text }}>{meal.name}</span>
-                      <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 4, background: meal.isHealthy ? '#22c55e' : '#ef4444', color: 'white', fontWeight: 'bold' }}>{meal.isHealthy ? 'HEALTHY' : 'NOT HEALTHY'}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 11, color: theme.textMuted }}>{meal.kcal} kcal</span>
-                      <span style={{ fontSize: 11, color: meal.isHealthy ? '#22c55e' : '#ef4444', fontWeight: 'bold' }}>{meal.isHealthy ? `+${meal.kcal < 500 ? 15 : 10}` : '+0'} pts</span>
-                      <button onClick={() => removeCustomMeal(meal.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 14, padding: 2 }}>×</button>
-                    </div>
-                  </div>
-                ))}
               </div>
-            ))}
+            );})}
 
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(34,197,94,0.1), rgba(16,185,129,0.1))', border: '1px solid rgba(34,197,94,0.2)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <div><p style={{ fontSize: 14, fontWeight: 'bold', margin: 0, color: theme.text }}>🥗 Repas libres</p><p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>📷 Photo ou texte</p></div>
-                <button onClick={() => setShowFoodModal(true)} style={{ background: 'linear-gradient(135deg, #22c55e, #10b981)', border: 'none', borderRadius: 10, padding: '8px 14px', cursor: 'pointer' }}><span style={{ fontSize: 12, fontWeight: 'bold', color: 'white' }}>+ Ajouter</span></button>
+                <div><p style={{ fontSize: 14, fontWeight: 'bold', margin: 0, color: theme.text }}>🥗 Repas libres</p><p style={{ fontSize: 11, color: theme.textMuted, margin: 0 }}>📷 Photo ou texte (snacks, extras...)</p></div>
+                <button onClick={() => { setSelectedMealType(null); setShowFoodModal(true); }} style={{ background: 'linear-gradient(135deg, #22c55e, #10b981)', border: 'none', borderRadius: 10, padding: '8px 14px', cursor: 'pointer' }}><span style={{ fontSize: 12, fontWeight: 'bold', color: 'white' }}>+ Ajouter</span></button>
               </div>
-              {dayData.customMeals?.length > 0 ? dayData.customMeals.map(meal => (
+              {(() => {
+                const freeMeals = dayData.customMeals?.filter(meal => !meal.mealType) || [];
+                return freeMeals.length > 0 ? freeMeals.map(meal => (
                 <div key={meal.id} style={{ background: darkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)', borderRadius: 12, padding: 12, marginBottom: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span>{meal.isHealthy ? '✅' : '⚠️'}</span><span style={{ fontWeight: 'bold', color: theme.text }}>{meal.name}</span></div>
-                      <p style={{ fontSize: 11, color: theme.textMuted, margin: '4px 0 0' }}>{meal.details}</p>
-                      <div style={{ display: 'flex', gap: 12, marginTop: 6 }}><span style={{ fontSize: 12, color: '#22c55e' }}>{meal.kcal} kcal</span><span style={{ fontSize: 12, color: meal.points >= 10 ? '#22c55e' : '#f59e0b' }}>+{meal.points} pts</span></div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontWeight: 'bold', color: theme.text }}>{meal.name}</span>
+                        <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 4, background: meal.isHealthy ? '#22c55e' : '#ef4444', color: 'white', fontWeight: 'bold' }}>{meal.isHealthy ? 'HEALTHY' : 'NOT HEALTHY'}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, marginTop: 4 }}><span style={{ fontSize: 12, color: theme.textMuted }}>{meal.kcal} kcal</span><span style={{ fontSize: 12, color: meal.isHealthy ? '#22c55e' : '#ef4444', fontWeight: 'bold' }}>{meal.isHealthy ? `+${meal.kcal < 500 ? 15 : 10}` : '+0'} pts</span></div>
                     </div>
-                    <button onClick={() => removeCustomMeal(meal.id)} style={{ background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 6, width: 28, height: 28, cursor: 'pointer', color: '#ef4444' }}>×</button>
+                    <button onClick={() => removeCustomMeal(meal.id)} style={{ background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', color: '#ef4444', fontSize: 12 }}>✕</button>
                   </div>
                 </div>
-              )) : <p style={{ fontSize: 12, color: theme.textVeryFaint, textAlign: 'center', margin: 0 }}>Aucun repas libre</p>}
+              )) : <p style={{ fontSize: 12, color: theme.textVeryFaint, textAlign: 'center', margin: 0 }}>Aucun repas libre</p>;
+              })()}
             </div>
 
             <div style={{ ...card, background: 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(249,115,22,0.1))', border: '1px solid rgba(239,68,68,0.2)', overflow: 'hidden' }}>

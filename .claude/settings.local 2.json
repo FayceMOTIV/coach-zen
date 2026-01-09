@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node -c:*)",
+      "Bash(npx next lint:*)",
+      "Bash(pkill:*)",
+      "Bash(curl:*)",
+      "Bash(cat:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(vercel --prod:*)",
+      "Bash(git add:*)",
+      "Bash(grep:*)",
+      "Bash(head:*)"
+    ]
+  }
+}
