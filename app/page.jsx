@@ -447,25 +447,25 @@ export default function CoachZen() {
     const weightNow = sorted[sorted.length - 1]?.weight || profile.poids;
     
     let streak = 0;
-    for (let i = 1; i <= 365; i++) {
+    for (let i = 0; i <= 365; i++) {
       const d = new Date(); d.setDate(d.getDate() - i);
       if (allData?.[formatDate(d)] && calcScore(allData[formatDate(d)]) >= 50) streak++; else break;
     }
 
     let hydrationStreak = 0;
-    for (let i = 1; i <= 365; i++) {
+    for (let i = 0; i <= 365; i++) {
       const d = new Date(); d.setDate(d.getDate() - i);
       if (allData?.[formatDate(d)]?.water >= 8) hydrationStreak++; else break;
     }
 
     let supplementStreak = 0;
-    for (let i = 1; i <= 365; i++) {
+    for (let i = 0; i <= 365; i++) {
       const d = new Date(); d.setDate(d.getDate() - i);
       if (getSupplementsCount(allData?.[formatDate(d)]?.supplements) >= 3) supplementStreak++; else break;
     }
 
     let gratitudeStreak = 0;
-    for (let i = 1; i <= 365; i++) {
+    for (let i = 0; i <= 365; i++) {
       const d = new Date(); d.setDate(d.getDate() - i);
       const grats = allData?.[formatDate(d)]?.gratitudes || [];
       if (grats.filter(g => g && g.trim()).length >= 3) gratitudeStreak++; else break;
@@ -851,12 +851,12 @@ export default function CoachZen() {
     const bestScore = allScores.length ? Math.max(...allScores) : 0;
     const lowestWeight = sortedWeights.length ? Math.min(...sortedWeights.map(w => w.weight)) : null;
 
-    // Plus long streak (historique)
+    // Plus long streak (historique) - même seuil que streak actuel (>= 50)
     let longestStreak = 0;
     let currentStreak = 0;
     const sortedDates = Object.keys(allData || {}).sort();
     for (const date of sortedDates) {
-      if (calcScore(allData[date]) >= 80) {
+      if (calcScore(allData[date]) >= 50) {
         currentStreak++;
         longestStreak = Math.max(longestStreak, currentStreak);
       } else {
@@ -1332,11 +1332,11 @@ export default function CoachZen() {
                 <p style={{ fontSize: 10, color: theme.textMuted, margin: '4px 0 0' }}>Objectif</p>
               </div>
               <div style={{ background: 'rgba(139,92,246,0.1)', borderRadius: 12, padding: 12, textAlign: 'center' }}>
-                <p style={{ fontSize: 20, fontWeight: 'bold', color: '#8b5cf6', margin: 0 }}>{Object.values(allData || {}).filter(d => d.habits?.fasting).length}</p>
+                <p style={{ fontSize: 20, fontWeight: 'bold', color: '#8b5cf6', margin: 0 }}>{Object.values(allData || {}).filter(d => d.fasting?.completed || d.fastingMorning).length}</p>
                 <p style={{ fontSize: 10, color: theme.textMuted, margin: '4px 0 0' }}>Jeûnes réussis</p>
               </div>
               <div style={{ background: 'rgba(34,197,94,0.1)', borderRadius: 12, padding: 12, textAlign: 'center' }}>
-                <p style={{ fontSize: 20, fontWeight: 'bold', color: '#22c55e', margin: 0 }}>+20</p>
+                <p style={{ fontSize: 20, fontWeight: 'bold', color: '#22c55e', margin: 0 }}>+{dayData?.fasting?.points || (dayData?.fastingMorning ? 20 : 0)}</p>
                 <p style={{ fontSize: 10, color: theme.textMuted, margin: '4px 0 0' }}>Points</p>
               </div>
             </div>
